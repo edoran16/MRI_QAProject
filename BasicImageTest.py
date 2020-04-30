@@ -151,3 +151,4 @@ print(Smax, Smin)
 uniformity_measure = 100 * (1-((Smax-Smin)/(Smax+Smin)))
 
 print(uniformity_measure)
+print(uniformity_measure)
