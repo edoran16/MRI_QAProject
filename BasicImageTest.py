@@ -1,9 +1,9 @@
 from DICOM_test import dicom_read_and_write
 import matplotlib.pyplot as plt
 import numpy as np
-from skimage.measure import profile_line
+from skimage.measure import profile_line, label, regionprops
 from skimage import filters, segmentation
-from skimage.measure import label, regionprops
+from skimage.morphology import binary_erosion
 
 directpath = "data_to_get_started/single_slice_dicom/"
 filename = "image1"
@@ -70,8 +70,6 @@ plt.show()
 val = filters.threshold_otsu(imdata)
 mask = imdata > val
 
-#clean_border = segmentation.clear_border(mask).astype(np.int)
-#phantom_edges = segmentation.mark_boundaries(imdata, clean_border)
 phantom_edges = segmentation.find_boundaries(mask, mode='thin').astype(np.uint8)
 
 plt.figure()
@@ -95,49 +93,37 @@ plt.show()
 label_img, num = label(mask, connectivity=imdata.ndim, return_num=True)
 # regionprops
 props = regionprops(label_img)
-
-centre_point = np.round(props[0].centroid)
 area100 = props[0].area
-r100 = int(np.round(np.sqrt(area100/np.pi)))
+area80 = area100*0.8  # desired phantom area = 80% of phantom area [IPEM Report 112]
 
-area80 = area100*0.8
-r80 = np.round(np.sqrt(area80/np.pi))
-r80 = np.round(r80)
-r80 = int(r80)
+ROIerode = []
+first_mask = np.copy(mask)
+old_mask_area = np.sum(first_mask)
 
-cx, cy = centre_point # The center of circle
-cx = int(cx)
-cy = int(cy)
+new_mask_area = old_mask_area
+count = 0
+while new_mask_area > area80:
+    count = count + 1
+    print(count) # number of iterations to reduce mask to desired 80% area
+    shrunk_mask = binary_erosion(first_mask)
+    unraveled_mask = np.ravel(shrunk_mask)
+    new_mask_area = np.sum(unraveled_mask)
+    first_mask = np.reshape(unraveled_mask, dims)
 
-ROI80 = np.zeros(mask.shape)
-y80, x80 = np.ogrid[-r80: r80, -r80: r80]
-index80 = x80**2 + y80**2 <= r80**2
-ROI80[cy-r80:cy+r80, cx-r80:cx+r80][index80] = 1
-
-ROI100 = np.zeros(mask.shape)
-y100, x100 = np.ogrid[-r100: r100, -r100: r100]
-index100 = x100**2 + y100**2 <= r100**2
-ROI100[cy-r100:cy+r100, cx-r100:cx+r100][index100] = 1
+print(new_mask_area/old_mask_area)
+ROIerode = first_mask
 
 plt.figure()
-plt.subplot(1, 4, 1)
-plt.imshow(imdata)
-plt.axis('off')
-plt.subplot(1, 4, 2)
+plt.subplot(121)
 plt.imshow(mask)
-plt.axis('off')
-plt.subplot(1, 4, 3)
-plt.imshow(ROI100+mask)
-plt.axis('off')
-plt.title('100% Area Circular Mask')
-plt.subplot(1, 4, 4)
-plt.imshow(ROI80+mask)
-plt.axis('off')
-plt.title('80% Area Circular Mask')
+plt.subplot(122)
+plt.imshow(mask*~ROIerode)
+plt.savefig(path + '_eroded_mask.png')
 plt.show()
 
-# Above method not working as I wanted... so go with otsu masked area just now
-mask_uniformity = np.copy(mask)
+### NEED TO APPLY LOW PASS FILTER TO IMAGE HERE!!!!
+
+mask_uniformity = ROIerode
 RoiVoxelVals = []
 for i in np.linspace(0, dims[0]-1, dims[0], dtype=int):
     for j in np.linspace(0, dims[1]-1, dims[1], dtype=int):
@@ -147,8 +133,10 @@ for i in np.linspace(0, dims[0]-1, dims[0], dtype=int):
 
 Smax = np.max(RoiVoxelVals)
 Smin = np.min(RoiVoxelVals)
-print(Smax, Smin)
 uniformity_measure = 100 * (1-((Smax-Smin)/(Smax+Smin)))
+non_uniformity_measure = 100-uniformity_measure
 
-print(uniformity_measure)
-print(uniformity_measure)
+print('Integral Uniformity, Uint = ', uniformity_measure.__round__(2), '%')
+print('Non-Uniformity Measure, N = ', non_uniformity_measure.__round__(2), '%')
+
+### MAKE GREYSCALE COLOUR MAP HERE!!!!
