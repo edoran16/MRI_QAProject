@@ -5,6 +5,7 @@ from skimage.measure import profile_line, label, regionprops
 from skimage import filters, segmentation
 from skimage.morphology import binary_erosion
 from scipy import ndimage
+from skimage.draw import ellipse
 
 directpath = "data_to_get_started/single_slice_dicom/"  # path to DICOM file
 filename = "image1"
@@ -211,25 +212,48 @@ max_row = np.max(rows)  # last row of phantom
 min_col = np.min(cols)  # first column of phantom
 max_col = np.max(cols)  # last column of phantom
 
+half_row = int(dims[0]/2)  # half way row
+mid_row1 = int(round(min_row/2))
+mid_row2 = int(round((((dims[0]-max_row)/2)+max_row)))
+
 half_col = int(dims[1]/2)  # half-way column
+mid_col1 = int(round(min_col/2))
+mid_col2 = int(round((((dims[1]-max_col)/2)+max_col)))
+
+print(half_col, half_row, mid_row1, mid_row2, mid_col1, mid_col2)
 
 bROI1 = bground_ROI.copy()  # initialise image matrix for each corner ROI
 bROI2 = bground_ROI.copy()
 bROI3 = bground_ROI.copy()
 bROI4 = bground_ROI.copy()
 
-bROI1[0:min_row, 0:half_col] = 1  # assign each "corner" ROI
-bROI2[0:min_row, half_col:dims[1]] = 1
-bROI3[max_row:dims[0], 0:half_col] = 1
-bROI4[max_row:dims[0], half_col:dims[1]] = 1
+# old way - horizontal rectangular ROIs
+# bROI1[0:min_row, 0:half_col] = 1  # assign each "corner" ROI
+# bROI2[0:min_row, half_col:dims[1]] = 1
+# bROI3[max_row:dims[0], 0:half_col] = 1
+# bROI4[max_row:dims[0], half_col:dims[1]] = 1
+
+# new way: 2 ROIs along each frequency and phase encoding direction
+#bROI1[0:min_row, 0:dims[1]] = 1  # assign each "corner" ROI
+rr1, cc1 = ellipse(mid_row1, half_col, mid_row1, max_col-half_col)
+bROI1[rr1, cc1] = 1
+
+rr2, cc2 = ellipse(half_row, mid_col1, half_row-min_row, min_col-mid_col1)
+bROI2[rr2, cc2] = 1
+
+rr3, cc3 = ellipse(half_row, mid_col2, half_row-min_row, mid_col2-max_col)
+bROI3[rr3, cc3] = 1
+
+rr4, cc4 = ellipse(mid_row2, half_col, dims[0]-mid_row2, half_col-min_col)
+bROI4[rr4, cc4] = 1
 
 # https://github.com/aaronfowles/breast_mri_qa/blob/master/breast_mri_qa/measure.py
 ROIs = [bROI1, bROI2, bROI3, bROI4]
-# erode each corner ROI to 5% of area of phantom ROI so total bground ROI is = 20% of signal ROI
+# erode each corner ROI to 10% of area of phantom ROI so total bground ROI is = 40% of signal ROI
 # this is a completely arbitrary choice!
 for region in ROIs:
     region_area = np.sum(region)
-    roi_proportion = 0.05  # 5%
+    roi_proportion = 0.2  # 5%
     #target_roi_area = roi_proportion * region_area  # based on corner ROI area
     target_roi_area = roi_proportion * new_mask_area  # based on phantom ROI area
     actual_roi_proportion = 1
