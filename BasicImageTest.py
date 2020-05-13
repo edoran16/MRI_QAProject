@@ -70,6 +70,7 @@ plt.show()
 # UNIFORMITY MEASUREMENT
 val = filters.threshold_otsu(imdata)  # OTSU threshold to segment phantom
 mask = imdata > val  # phantom mask
+# TODO: update threshold method for alternative foreground detection
 
 phantom_edges = segmentation.find_boundaries(mask, mode='thin').astype(np.uint8)  # finds outline of mask
 
@@ -294,6 +295,7 @@ signal_samples = signal_samples[0]
 # check what % of signal ROI that background ROI is - should be approx 20%
 print('Background ROI size is ', round((b_ground_samples/signal_samples)*100, 2), '% of signal ROI size.')
 
+##########
 noise_mask = ndimage.binary_dilation(mask, iterations=2)  # dilate mask to avoid edge effects when displaying noise
 noise_image = imdata*~noise_mask  #image noise (phantom signal is masked out)
 ALLBGrndVoxelVals = noise_image[noise_mask == 0]  # voxel values from all of background
@@ -314,6 +316,7 @@ plt.suptitle('Histogram of Background Noise')
 plt.title('Demonstration of Non-Gaussian Distribution')
 plt.savefig(path + '_noise_histogram.png')
 plt.show()
+##########
 
 # SNR calculation
 SNR_background = (factor * mean_phantom)/stdev_background
