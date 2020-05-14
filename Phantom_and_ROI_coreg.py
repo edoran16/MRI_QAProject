@@ -60,7 +60,7 @@ def compute_rigid_transform(ref_points, points):
 
 
 def rigid_alignment(dst, ref_points, pathtosave, plotflag=False):
-    """Align images rigidlyand save as new images.
+    """Align images rigidly and save as new images.
     Path determines where the aligned images are saved.
     Set plotFlag=True to plot images."""
 
@@ -83,6 +83,83 @@ def rigid_alignment(dst, ref_points, pathtosave, plotflag=False):
     # border = (w + h)/20
 
     return img2
+
+
+def draw_circle_ROI(img, pathtosave):
+    # Center coordinates
+    center_coordinates = (90, 90)
+    # Radius of circle
+    radius = 20
+    # Color in grayscale
+    color = 0
+    # Line thickness of 2 px
+    thickness = 2
+    # Using cv2.circle() method
+    # Draw a circle with blue line borders of thickness of 2 px
+    image = cv2.circle(img, center_coordinates, radius, color, thickness)
+    cv2.imwrite(pathtosave + '_phantom_andROI.png', image)
+    # Displaying the image
+    cv2.imshow('Phantom + ROI', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    # TODO: figure how to return values from ROI. Should be straight forward.
+    return image
+
+
+def isgray(img):
+    if len(img.shape) < 3:
+        return True
+    if img.shape[2] == 1:
+        return True
+    b, g, r = img[:, :,0], img[:, :, 1], img[:, :, 2]
+    if (b == g).all() and (b == r).all():
+        return True
+    return False
+
+# TODO: sort out greyscale data Hough transform
+def detect_circles(img, pathtosave):
+    print(img.dtype, np.min(img), np.max(img))
+
+    # convert img to greyscale
+    img2 = img*255
+    print(type(img2), img2.dtype, np.min(img2), np.max(img2))
+    #img = cv2.medianBlur(img, 5)
+
+    cv2.imshow('Phantom + ROI', img2/255)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    cimg = cv2.cvtColor(np.uint16(img2), cv2.COLOR_GRAY2BGR)
+    print(cimg.shape)
+
+    circles = cv2.HoughCircles(np.uint64(img2), cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=20, maxRadius=30)
+    #print(circles)
+    #circles = np.uint16(np.around(circles))
+
+    # for i in circles[0, :]:
+    #     # draw the outer circle
+    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+    #     # draw the center of the circle
+    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+
+    cv2.imshow('detected circles', cimg)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    return circles
+
+
+def replicate_ROI(circles, img):
+
+    for i in circles[0, :]:
+        # draw the outer circle
+        cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        # draw the center of the circle
+        cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
+
+    cv2.imshow('detected circles', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 directpath = "data_to_get_started/single_slice_dicom/"  # path to DICOM file
@@ -119,9 +196,14 @@ y_true, skipb, skipa = label_img(img)
 y_pred, skipd, skipc = label_img(img_aligned)
 
 j_score = jaccard_score(y_true, y_pred, average='samples')
-
 print('Jaccard similarity score = ', j_score.round(2))
 
+"""DETECTING ROI"""
+ROIim = draw_circle_ROI(img, path)
+#result = isgray(ROIim)
+#print('Is gray = ', result)
+#circles = detect_circles(ROIim, path)
+#replicate_ROI(circles, img_aligned)
 
 
 

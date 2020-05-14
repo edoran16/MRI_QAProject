@@ -8,7 +8,6 @@ from scipy import stats
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -417,15 +416,17 @@ def create_report(SNR, Uint):
     env = Environment(loader=FileSystemLoader('.'))
     template = env.get_template('testreport.html')
 
-    template_vars = {"title" : "Quality Control- Basic Phantom Results",
-                     "results_table" : df.to_html()}
+    template_vars = {"title": "Quality Control- Basic Phantom Results",
+                     "results_table": df.to_html(),
+                     "TestText": "Single slice DICOM image of Phantom."}
 
     html_out = template.render(template_vars)
+
+    #HTML(string='<img src="data_to_get_started/single_slice_dicom/image1.png">').write_pdf("testreport.pdf")
+    #HTML(string="<p> Testing... </p>").write_pdf("testreport.pdf")
     HTML(string=html_out).write_pdf("testreport.pdf")
 
     return
-
-
 
 
 
