@@ -14,6 +14,7 @@ import pandas as pd
 import pydicom
 
 # https://github.com/ccipd/MRQy/blob/master/QCF.py
+# Classes and object theory from O'Reilly: Effective Computation in Physics. A.Scopatz & K. D. Huff
 
 class phantomimage_dicom:
     """ Class for dicom single slice phantom image.
