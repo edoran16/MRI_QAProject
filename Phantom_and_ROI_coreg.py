@@ -6,6 +6,9 @@ from skimage import filters
 from skimage.measure import label, regionprops
 from sklearn.metrics import jaccard_score
 
+# TODO: go through variable names and greyscale/binary data types to fix bug
+
+# rigid registration code from O'Reilly Programming Computer Vision with Python textbook. Jan Erik Solem
 
 def label_img(img):
     """Mask image and label it."""
@@ -71,10 +74,12 @@ def rigid_alignment(dst, ref_points, pathtosave, plotflag=False):
     T = np.array([[R[1][1], R[1][0]], [R[0][1], R[0][0]]])
 
     img2 = ndimage.affine_transform(dst, linalg.inv(T), offset=[-TY, -TX])
+    img3 = img2 + np.abs(np.min(img2))  # rescale
+    img4 = img3/np.max(img3)  # normalise
     cv2.imwrite(pathtosave + '_phantomcoreg.png', img2*255)
 
     if plotflag:
-        cv2.imshow('NewImg', img2)
+        cv2.imshow('NewImg', img4)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -82,16 +87,16 @@ def rigid_alignment(dst, ref_points, pathtosave, plotflag=False):
     # h, w = img2.shape[:2]
     # border = (w + h)/20
 
-    return img2
+    return img4
 
 
-def draw_circle_ROI(img, pathtosave):
+def draw_circle_ROI(img, pathtosave, plotflag=False):
     # Center coordinates
     center_coordinates = (90, 90)
     # Radius of circle
     radius = 20
     # Color in grayscale
-    color = 0
+    color = 255  # ROI detection will not work with color = 0
     # Line thickness of 2 px
     thickness = 2
     # Using cv2.circle() method
@@ -99,73 +104,116 @@ def draw_circle_ROI(img, pathtosave):
     image = cv2.circle(img, center_coordinates, radius, color, thickness)
     cv2.imwrite(pathtosave + '_phantom_andROI.png', image)
     # Displaying the image
-    cv2.imshow('Phantom + ROI', image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    # TODO: figure how to return values from ROI. Should be straight forward.
+    if plotflag:
+        cv2.imshow('Phantom + ROI', image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     return image
 
 
-def isgray(img):
-    if len(img.shape) < 3:
-        return True
-    if img.shape[2] == 1:
-        return True
-    b, g, r = img[:, :,0], img[:, :, 1], img[:, :, 2]
-    if (b == g).all() and (b == r).all():
-        return True
-    return False
-
-# TODO: sort out greyscale data Hough transform
-def detect_circles(img, pathtosave):
-    print(img.dtype, np.min(img), np.max(img))
+def detect_circles(img_with_ROI, img_orig, pathtosave, plotflag=False):
+    """ img = image with ROI on it. ROI must be == 255
+        img_orig = original image to draw matched ROI on """
 
     # convert img to greyscale
-    img2 = img*255
-    print(type(img2), img2.dtype, np.min(img2), np.max(img2))
-    #img = cv2.medianBlur(img, 5)
+    img_gray = img_with_ROI.astype('float32')*255
+    img_orig = img_orig.astype('float32')*255
 
-    cv2.imshow('Phantom + ROI', img2/255)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    if plotflag:
+        cv2.imshow('Phantom Image with ROI', img_gray.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.imshow('Image Ready for ROI', img_orig.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
-    cimg = cv2.cvtColor(np.uint16(img2), cv2.COLOR_GRAY2BGR)
-    print(cimg.shape)
+    #img4 = cv2.medianBlur(img_gray, 5)
+    #print(type(img4), img4.dtype, np.min(img4), np.max(img4))
 
-    circles = cv2.HoughCircles(np.uint64(img2), cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=20, maxRadius=30)
-    #print(circles)
-    #circles = np.uint16(np.around(circles))
+    #cv2.imshow('Median Blur', img4.astype('uint8'))
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
-    # for i in circles[0, :]:
-    #     # draw the outer circle
-    #     cv2.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
-    #     # draw the center of the circle
-    #     cv2.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+    #cimg = cv2.cvtColor(np.uint16(img4), cv2.COLOR_GRAY2BGR)
+    #print(type(cimg), cimg.dtype, np.min(cimg), np.max(cimg))
 
-    cv2.imshow('detected circles', cimg)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    circles = cv2.HoughCircles(np.uint8(img_gray), cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=10, maxRadius=30)
+
+    circles = np.uint16(np.around(circles))
+    # [coordinate1, coordinate2, radius]
+
+    for i in circles[0, :]:
+        # draw the outer circle
+        cv2.circle(img_orig, (i[0], i[1]), i[2], 0, 2)  # 0 = color, 2 = thickness
+        # draw the center of the circle
+        cv2.circle(img_orig, (i[0], i[1]), 2, 0, 3)
+
+    cv2.imwrite(pathtosave + '_detect_circles.png', img_orig)
+
+    if plotflag:
+        cv2.imshow('detected circles', img_orig.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     return circles
 
 
-def replicate_ROI(circles, img):
+def replicate_ROI(circle_coords, img_to_draw_on, plotflag=False):
 
-    for i in circles[0, :]:
+    img_to_draw_ROI_on = img_to_draw_on.astype('float32') * 255
+
+    for i in circle_coords[0, :]:
         # draw the outer circle
-        cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), i[2], 0, 2)
         # draw the center of the circle
-        cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
+        cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), 2, 0, 3)
 
-    cv2.imshow('detected circles', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    if plotflag:
+        cv2.imshow('ROI Replicated', img_to_draw_ROI_on.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    return
+
+
+def get_ROI_voxels(im, roi, plotflag=True):
+
+    im1 = im.astype('float32')  #greyscale
+    print(im1.dtype, np.min(im1), np.max(im1))
+
+    if plotflag:
+        cv2.imshow('Draw circle', im1.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    im2 = np.zeros_like(im1)  # zero array same size as im
+
+    for i in roi[0, :]:
+        # draw the outer circle
+        cv2.circle(im2, (i[0], i[1]), i[2], 255, -1)
+
+    if plotflag:
+        cv2.imshow('Draw circle', im2.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    im3 = im2/255  # greyscale to binary
+    mult = im1*im3
+
+    if plotflag:
+        cv2.imshow('Phantom in ROI', mult.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    voxel_vals = mult[mult > 0]  # voxel values in ROI (in greyscale values!)
+
+    return voxel_vals
 
 
 directpath = "data_to_get_started/single_slice_dicom/"  # path to DICOM file
 filename = "image1"
 path = "{0}{1}".format(directpath, filename)
-ds, img, dims = dicom_read_and_write(path)  # function from DICOM_test.py
+ds, img, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
+"""img = image from baseline QA with ROIs"""
 
 rows, cols = img.shape
 img = img/np.max(img)  # cv2 requires img to be in range 0-1 so normalise image data
@@ -173,8 +221,9 @@ img = img/np.max(img)  # cv2 requires img to be in range 0-1 so normalise image 
 # TRANSLATION
 M = np.float64([[1, 0, 20], [0, 1, 20]])
 dst = cv2.warpAffine(img, M, (cols, rows))
+"""dst = routine QA image to be registered with baseline QA scan"""
 
-initialplot = True
+initialplot = False
 
 if initialplot:
     cv2.imshow('img', img)
@@ -188,9 +237,9 @@ if initialplot:
 
 images = [img, dst]
 
-reference_points = get_ref_points(images, plotflag=True)
+reference_points = get_ref_points(images, plotflag=False)
 
-img_aligned = rigid_alignment(dst, reference_points, path, plotflag=True)
+img_aligned = rigid_alignment(dst, reference_points, path, plotflag=False)
 
 y_true, skipb, skipa = label_img(img)
 y_pred, skipd, skipc = label_img(img_aligned)
@@ -199,11 +248,27 @@ j_score = jaccard_score(y_true, y_pred, average='samples')
 print('Jaccard similarity score = ', j_score.round(2))
 
 """DETECTING ROI"""
-ROIim = draw_circle_ROI(img, path)
-#result = isgray(ROIim)
-#print('Is gray = ', result)
-#circles = detect_circles(ROIim, path)
-#replicate_ROI(circles, img_aligned)
+
+#print(img.dtype, np.min(img), np.max(img))
+#print(img_aligned.dtype, np.min(img_aligned), np.max(img_aligned))
+
+#cv2.imshow('img', img)
+#cv2.waitKey(0)
+#cv2.imshow('dst', img_aligned)
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
+
+draw_img = img.copy()
+
+ROIim = draw_circle_ROI(draw_img, path)
+""" ROIim would be the baseline QA image to be matched to."""
+
+circles_detected = detect_circles(ROIim, draw_img, path)  # draw_img used here only for plotting....
+
+replicate_ROI(circles_detected, draw_img)
+
+ROI_vals = get_ROI_voxels(draw_img, circles_detected)
+print(ROI_vals)
 
 
 

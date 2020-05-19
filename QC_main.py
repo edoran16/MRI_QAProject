@@ -1,4 +1,4 @@
-from QC_mod import phantomimage_dicom, explore_noise, create_report
+from QC_mod import phantomimage_dicom, explore_noise, create_report, MagNETdata_dicom
 
 
 def main():
@@ -31,7 +31,13 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    gen = MagNETdata_dicom()  # MagNET data class
+    dicomfile, single_slice_im, df, imdims = gen.dicom_read_and_write()
+
+    xdim, ydim, zdim = imdims
+
+
 
 
 

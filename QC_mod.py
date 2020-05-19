@@ -14,6 +14,7 @@ import pandas as pd
 import pydicom
 
 # https://github.com/ccipd/MRQy/blob/master/QCF.py
+# Classes and object theory from O'Reilly: Effective Computation in Physics. A.Scopatz & K. D. Huff
 
 class phantomimage_dicom:
     """ Class for dicom single slice phantom image.
@@ -45,6 +46,15 @@ class phantomimage_dicom:
         imagedata = fulldicomfile.pixel_array
         imagedimensions = imagedata.shape
 
+        # pandas data frame for meta data
+        # https://stackoverflow.com/questions/56601525/how-to-store-the-header-data-of-a-dicom-file-in-a-pandas-dataframe
+        df = pd.DataFrame(fulldicomfile.values())
+        df[0] = df[0].apply(
+            lambda x: pydicom.dataelem.DataElement_from_raw(x) if isinstance(x, pydicom.dataelem.RawDataElement) else x)
+        df['name'] = df[0].apply(lambda x: x.name)
+        df['value'] = df[0].apply(lambda x: x.value)
+        df = df[['name', 'value']]
+
         # display image
         if plotflag:
             plt.figure()
@@ -53,7 +63,9 @@ class phantomimage_dicom:
             plt.axis('off')
             plt.show()
 
-        return fulldicomfile, imagedata, imagedimensions
+        return fulldicomfile, imagedata, df, imagedimensions
+
+
 
     def return_line_profile(self, imdata, src, dst, lw, plotflag=False):
         """ Draw line profile across centre line of phantom
@@ -343,6 +355,40 @@ class phantomimage_dicom:
         SNR_background = (factor * mean_phantom) / stdev_background
 
         return SNR_background
+
+
+class MagNETdata_dicom:
+    """ Class for MagNET acceptance testing data."""
+
+    def __init__(self):
+        # TODO: this section will need changed to give correct path to any future data i.e. in XNAT or Prisma files
+        self.directpath = "MagNET_acceptance_test_data/scans/"
+        self.folder = "45-SPINE_123/resources/DICOM/files/"
+        self.filename = "1.3.12.2.1107.5.2.51.182690.30000019050607313408100000039-45-1-wm8zff.dcm"
+        self.path = "{0}{1}{2}".format(self.directpath, self.folder, self.filename)
+        print("Init called!")
+
+    def dicom_read_and_write(self):
+        """ function to read dicom file from specified path
+        :param pathtofile: full path to dicom file
+        :return: returns dicom file, image data and image dimensions
+        """
+        # get test data
+        fulldicomfile = pydicom.dcmread(self.path)
+        # assign image data
+        imagedata = fulldicomfile.pixel_array
+        imagedimensions = imagedata.shape
+
+        # pandas data frame for meta data
+        # https://stackoverflow.com/questions/56601525/how-to-store-the-header-data-of-a-dicom-file-in-a-pandas-dataframe
+        df = pd.DataFrame(fulldicomfile.values())
+        df[0] = df[0].apply(
+            lambda x: pydicom.dataelem.DataElement_from_raw(x) if isinstance(x, pydicom.dataelem.RawDataElement) else x)
+        df['name'] = df[0].apply(lambda x: x.name)
+        df['value'] = df[0].apply(lambda x: x.value)
+        df = df[['name', 'value']]
+
+        return fulldicomfile, imagedata, df, imagedimensions
 
 
 def explore_noise(mask, imdata, path, plotflag=False):
