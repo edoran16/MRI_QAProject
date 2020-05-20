@@ -43,7 +43,6 @@ plt.figure()
 plt.imshow(imdata[2, :, :], cmap='bone')
 plt.colorbar()
 plt.axis('off')
-plt.savefig(path + '.png')
 plt.show()
 
 # draw line profile across centre line of phantom
@@ -57,7 +56,6 @@ plt.figure()
 plt.plot(output)
 plt.xlabel('Voxels')
 plt.ylabel('Signal')
-plt.savefig(path + '_output.png')
 plt.show()
 
 # display profile line on phantom: from source code of profile_line function
@@ -90,7 +88,6 @@ plt.figure()
 plt.imshow(improfile, cmap='bone')
 plt.colorbar()
 plt.axis('off')
-plt.savefig(path + '_line_profile.png')
 plt.show()
 
 # UNIFORMITY MEASUREMENT
@@ -171,7 +168,6 @@ plt.imshow(back_image)
 plt.axis('off')
 plt.title('Background Image')
 plt.tight_layout()
-plt.savefig(path + '_foreground_detection2.png')
 plt.show()
 ###########################
 
@@ -191,7 +187,6 @@ plt.imshow(mask + phantom_edges)
 plt.axis('off')
 plt.title('Overlay')
 plt.tight_layout()
-plt.savefig(path + '_otsu_boundary_mask.png')
 plt.show()
 
 label_img, num = label(mask, connectivity=imdata.ndim, return_num=True)  # labels the mask
@@ -223,7 +218,6 @@ plt.axis('off')
 plt.subplot(122)
 plt.imshow(mask * ~ROIerode)
 plt.axis('off')
-plt.savefig(path + '_eroded_mask.png')
 plt.show()
 
 # LOW PASS FILTER APPLIED TO REDUCE EFFECTS OF NOISE
@@ -244,7 +238,6 @@ plt.subplot(122)
 plt.imshow(imdata_conv / np.max(imdata_conv), cmap='bone')
 plt.title('Low Pass Filtered Image')
 plt.axis('off')
-plt.savefig(path + '_convolution.png')
 plt.show()
 
 mask_uniformity = ROIerode  # mask for measuring uniformity is the eroded mask
@@ -298,7 +291,6 @@ cbar.ax.set_yticklabels(['< -20%', '-10% to -20%',
                          '-10% to +10%', '+10% to 20%', '> +20%'])
 plt.axis('off')
 plt.title('Greyscale Uniformity Map; scaled relative to mean pixel value')
-plt.savefig(path + '_GUM.png')
 plt.show()
 
 # SNR measure
@@ -378,7 +370,6 @@ plt.subplot(122)
 plt.imshow(mask_uniformity)
 plt.title('Signal ROI')
 plt.axis('off')
-plt.savefig(path + '_SNR_masks.png')
 plt.show()
 
 # background/noise voxel values
@@ -407,7 +398,6 @@ ALLBGrndVoxelVals = noise_image[noise_mask == 0]  # voxel values from all of bac
 plt.figure()
 plt.imshow(noise_image, cmap='gray')
 plt.axis('off')
-plt.savefig(path + '_noise_image.png')
 plt.show()
 
 # histogram of noise to check that is follows non-Gaussian distribution
@@ -417,7 +407,6 @@ plt.xlabel('Pixel Intensity')
 plt.ylabel('Number of Pixels')
 plt.suptitle('Histogram of Background Noise')
 plt.title('Demonstration of Non-Gaussian Distribution')
-plt.savefig(path + '_noise_histogram.png')
 plt.show()
 ##########
 
