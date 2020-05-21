@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
+from nibabel.viewers import OrthoSlicer3D
 from skimage.measure import profile_line, label, regionprops
 from skimage import filters, segmentation
 from skimage.morphology import binary_erosion, convex_hull_image
@@ -26,14 +27,102 @@ ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
 # df = pandas data frame with DICOM header info
 # dims = dimensions of pixel array/image
 
+
+
 try:
     xdim, ydim, zdim = dims
+    OrthoSlicer3D(imdata).show()  # look at 3D volume data
 except ValueError:
     print('DATA INPUT ERROR: this is 2D image data')
     sys.exit()
 
 # FIND MIDDLE SLICE! :D
 # 1. create 3D mask
+slice_dim = np.where(dims == np.min(dims))
+slice_dim = slice_dim[0]
+slice_dim = slice_dim[0]
+
+
+no_slices = dims[slice_dim]
+print("Number of slices = ", no_slices)
+
+mask3D = np.zeros_like(imdata)
+
+for imslice in np.linspace(0, no_slices-1, no_slices, dtype=int):
+    if slice_dim == 0:
+        img = imdata[imslice, :, :]  #sagittal
+    if slice_dim == 1:
+        img = imdata[:, imslice, :]  # coronal
+        # TODO: might need to "squeeze out" middle dimension?
+    if slice_dim == 2:
+        img = imdata[:, :, imslice]  # transverse
+
+    h = ex.equalize_hist(img) * 255  # histogram equalisation increases contrast of image
+    oi = np.zeros_like(img, dtype=np.uint16)  # creates zero array same dimensions as img
+    oi[(img > filters.threshold_otsu(img)) == True] = 1  # Otsu threshold on image
+    oh = np.zeros_like(img, dtype=np.uint16)  # zero array same dims as img
+    oh[(h > filters.threshold_otsu(h)) == True] = 1  # Otsu threshold on hist eq image
+
+    # plt.subplot(221)
+    # plt.imshow(oi, cmap='bone')
+    # plt.title('Image Otsu Threshold')
+    # plt.axis('off')
+    # plt.subplot(222)
+    # plt.imshow(oh, cmap='bone')
+    # plt.title('Hist Eq Image Threshold')
+    # plt.axis('off')
+
+    nm = img.shape[0] * img.shape[1]  # total number of voxels in image
+    # calculate normalised weights for weighted combination
+    w1 = np.sum(oi) / nm
+    w2 = np.sum(oh) / nm
+    ots = np.zeros_like(img, dtype=np.uint16)  # create final zero array
+    new = (w1 * img) + (w2 * h)  # weighted combination of original image and hist eq version
+    ots[(new > filters.threshold_otsu(new)) == True] = 1  # Otsu threshold on weighted combination
+
+    # plt.subplot(223)
+    # plt.imshow(ots, cmap='bone')
+    # plt.title('Weighted Combo Image Threshold')
+    # plt.axis('off')
+
+    # not sure this stage is that helpful... doesn't mask top of phantom right
+    conv_hull = convex_hull_image(ots)  # set of pixels included in smallest convex polygon that SURROUND all white pixels in the input image
+    ch = np.multiply(conv_hull, 1)  # bool --> binary
+
+    # plt.subplot(224)
+    # plt.imshow(ch, cmap='bone')
+    # plt.title('Convex Hull Image')
+    # plt.axis('off')
+    # plt.show()
+
+    fore_image = ch * img  # phantom
+    back_image = (1 - ch) * img  #background
+
+    # plt.figure()
+    # plt.subplot(131)
+    # plt.imshow(img)
+    # plt.title('Original Image')
+    # plt.axis('off')
+    # plt.subplot(132)
+    # plt.imshow(fore_image)
+    # plt.title('Foreground Image')
+    # plt.axis('off')
+    # plt.subplot(133)
+    # plt.imshow(back_image)
+    # plt.axis('off')
+    # plt.title('Background Image')
+    # plt.tight_layout()
+    # plt.show()
+
+    if slice_dim == 0:
+        mask3D[imslice, :, :] = ch
+    if slice_dim == 1:
+        mask3D[:, imslice, :] = ch
+    if slice_dim == 2:
+        mask3D[:, :, imslice] = ch
+
+OrthoSlicer3D(mask3D).show()  # look at 3D volume data
+
 # 2. sum mask in each slice
 # 3. slice with most signal voxels is the middle/biggest slice
 # 4. how to do some sort of test on this...?
