@@ -1,14 +1,15 @@
 from DICOM_test import dicom_read_and_write
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from scipy import linalg, ndimage
 from skimage import filters
 from skimage.measure import label, regionprops
 from sklearn.metrics import jaccard_score
 
-# TODO: go through variable names and greyscale/binary data types to fix bug
-
 # rigid registration code from O'Reilly Programming Computer Vision with Python textbook. Jan Erik Solem
+
 
 def label_img(img):
     """Mask image and label it."""
@@ -134,6 +135,7 @@ def detect_circles(img_with_ROI, img_orig, pathtosave, plotflag=False):
     #cv2.destroyAllWindows()
 
     #cimg = cv2.cvtColor(np.uint16(img4), cv2.COLOR_GRAY2BGR)
+    # TODO: greyscale to RGB version of greyscale if want to put circles in colour
     #print(type(cimg), cimg.dtype, np.min(cimg), np.max(cimg))
 
     circles = cv2.HoughCircles(np.uint8(img_gray), cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=10, maxRadius=30)
@@ -177,27 +179,33 @@ def replicate_ROI(circle_coords, img_to_draw_on, plotflag=False):
 
 def get_ROI_voxels(im, roi, plotflag=True):
 
-    im1 = im.astype('float32')  #greyscale
-    print(im1.dtype, np.min(im1), np.max(im1))
+    print(im.dtype, np.min(im), np.max(im))
 
     if plotflag:
-        cv2.imshow('Draw circle', im1.astype('uint8'))
+        cv2.imshow('Draw circle', im)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    im2 = np.zeros_like(im1)  # zero array same size as im
+    im2 = im.copy()
+    im2 = im2*255  # greyscale image of phantom
+
+    roi_mask = np.zeros_like(im)  # create mask for ROI
 
     for i in roi[0, :]:
         # draw the outer circle
         cv2.circle(im2, (i[0], i[1]), i[2], 255, -1)
+        cv2.circle(roi_mask, (i[0], i[1]), i[2], 255, -1)
 
     if plotflag:
         cv2.imshow('Draw circle', im2.astype('uint8'))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    im3 = im2/255  # greyscale to binary
-    mult = im1*im3
+        cv2.imshow('ROI Mask', roi_mask.astype('uint8'))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    mult = im*roi_mask
 
     if plotflag:
         cv2.imshow('Phantom in ROI', mult.astype('uint8'))
@@ -249,26 +257,24 @@ print('Jaccard similarity score = ', j_score.round(2))
 
 """DETECTING ROI"""
 
-#print(img.dtype, np.min(img), np.max(img))
-#print(img_aligned.dtype, np.min(img_aligned), np.max(img_aligned))
-
-#cv2.imshow('img', img)
-#cv2.waitKey(0)
-#cv2.imshow('dst', img_aligned)
-#cv2.waitKey(0)
-#cv2.destroyAllWindows()
-
 draw_img = img.copy()
 
-ROIim = draw_circle_ROI(draw_img, path)
+ROIim = draw_circle_ROI(draw_img, path, False)
 """ ROIim would be the baseline QA image to be matched to."""
 
-circles_detected = detect_circles(ROIim, draw_img, path)  # draw_img used here only for plotting....
+circles_detected = detect_circles(ROIim, draw_img, path, False)  # draw_img used here only for plotting....
 
-replicate_ROI(circles_detected, draw_img)
+draw_img2 = img_aligned.copy()
 
-ROI_vals = get_ROI_voxels(draw_img, circles_detected)
-print(ROI_vals)
+replicate_ROI(circles_detected, draw_img2, False)
+
+draw_img3 = img_aligned.copy()
+
+ROI_vals = get_ROI_voxels(draw_img3, circles_detected, False)  # greyscale values
+
+# univariate distribution of ROI values
+ax = sns.distplot(ROI_vals)
+plt.show()
 
 
 
