@@ -98,17 +98,20 @@ def draw_circle_ROI(img, pathtosave, plotflag=False):
     radius = 20
     # Color in grayscale
     color = 255  # ROI detection will not work with color = 0
-    # Line thickness of 2 px
-    thickness = 2
+    # Line thickness of 1 px
+    thickness = 1
     # Using cv2.circle() method
     # Draw a circle with blue line borders of thickness of 2 px
-    image = cv2.circle(img, center_coordinates, radius, color, thickness)
-    cv2.imwrite(pathtosave + '_phantom_andROI.png', image)
+    image = cv2.circle(img, center_coordinates, radius, 1, thickness)
+
     # Displaying the image
     if plotflag:
         cv2.imshow('Phantom + ROI', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+    cv2.imwrite(pathtosave + '_phantom_andROI.png', image*255)
+
     return image
 
 
@@ -138,16 +141,18 @@ def detect_circles(img_with_ROI, img_orig, pathtosave, plotflag=False):
     # TODO: greyscale to RGB version of greyscale if want to put circles in colour
     #print(type(cimg), cimg.dtype, np.min(cimg), np.max(cimg))
 
-    circles = cv2.HoughCircles(np.uint8(img_gray), cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=10, maxRadius=30)
+    circles = cv2.HoughCircles(np.uint8(img_gray), cv2.HOUGH_GRADIENT, 1, 100, param1=255, param2=10, minRadius=10, maxRadius=50)
 
-    circles = np.uint16(np.around(circles))
+    circles = np.uint16(np.round(circles))
     # [coordinate1, coordinate2, radius]
+    print(circles)
+    # TODO: detected circle is not IDENTICAL to original circle.... need to think about this...
 
     for i in circles[0, :]:
         # draw the outer circle
-        cv2.circle(img_orig, (i[0], i[1]), i[2], 0, 2)  # 0 = color, 2 = thickness
+        cv2.circle(img_orig, (i[0], i[1]), i[2], 0, 1)  # 0 = color, 2 = thickness
         # draw the center of the circle
-        cv2.circle(img_orig, (i[0], i[1]), 2, 0, 3)
+        cv2.circle(img_orig, (i[0], i[1]), 2, 0, 2)
 
     cv2.imwrite(pathtosave + '_detect_circles.png', img_orig)
 
@@ -159,20 +164,22 @@ def detect_circles(img_with_ROI, img_orig, pathtosave, plotflag=False):
     return circles
 
 
-def replicate_ROI(circle_coords, img_to_draw_on, plotflag=False):
+def replicate_ROI(circle_coords, img_to_draw_on, pathtosave, plotflag=False):
 
     img_to_draw_ROI_on = img_to_draw_on.astype('float32') * 255
 
     for i in circle_coords[0, :]:
         # draw the outer circle
-        cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), i[2], 0, 2)
+        cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), i[2], 1, 1)
         # draw the center of the circle
-        cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), 2, 0, 3)
+        #cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), 2, 0, 3)
 
     if plotflag:
         cv2.imshow('ROI Replicated', img_to_draw_ROI_on.astype('uint8'))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+    cv2.imwrite(pathtosave + '_replicateROI.png', img_to_draw_ROI_on)
 
     return
 
@@ -259,14 +266,14 @@ print('Jaccard similarity score = ', j_score.round(2))
 
 draw_img = img.copy()
 
-ROIim = draw_circle_ROI(draw_img, path, False)
+ROIim = draw_circle_ROI(draw_img, path, True)
 """ ROIim would be the baseline QA image to be matched to."""
 
 circles_detected = detect_circles(ROIim, draw_img, path, False)  # draw_img used here only for plotting....
 
 draw_img2 = img_aligned.copy()
 
-replicate_ROI(circles_detected, draw_img2, False)
+replicate_ROI(circles_detected, draw_img2, path, False)
 
 draw_img3 = img_aligned.copy()
 

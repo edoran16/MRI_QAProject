@@ -38,8 +38,8 @@ ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
 
 
 def slice_pos_meta(dicomfile):
-    # extract metadata for slice postion info calculations
-    # dicomfile = pydicom.dataset.FileDataset
+    """ extract metadata for slice postion info calculations
+    dicomfile = pydicom.dataset.FileDataset"""
     elem = dicomfile[0x5200, 0x9230]  # pydicom.dataelem.DataElement, (Per-frame Functional Groups Sequence)
     seq = elem.value  # pydicom.sequence.Sequence
     elem3 = seq[0]  # first frame
@@ -107,86 +107,92 @@ for imslice in np.linspace(0, no_slices-1, no_slices, dtype=int):
 #OrthoSlicer3D(mask3D).show()  # look at 3D volume data
 
 # For slice position analysis want to do analysis on every slice but for now start with mid-slice
+# TODO: only interested in slices 7 to 36 as this is where rods are... need to detect this range!!
 # TODO: make this code work for every slice! and make measurement
-# for zz in range(no_slices):
-zz = int(round(no_slices/2))  # slice of interest
-phmask = mask3D[zz, :, :]  # phantom mask
-phim = imdata[zz, :, :]*phmask  # phantom image
-bgim = imdata[zz, :, :]*~phmask  # background image
+for zz in np.linspace():#(6, 35, 30):#range(no_slices):
+    print('Slice ', int(zz+1))
+    zz = int(zz)
+    #zz = 37#int(round(no_slices/2))  # slice of interest
+    phmask = mask3D[zz, :, :]  # phantom mask
+    phim = imdata[zz, :, :]*phmask  # phantom image
+    bgim = imdata[zz, :, :]*~phmask  # background image
 
-# display image
-cv2.imshow('phantom image', ((phim/np.max(phim))*255).astype('uint8'))
-cv2.waitKey(0)
+    # display image
+    cv2.imshow('phantom image', ((phim/np.max(phim))*255).astype('uint8'))
+    cv2.waitKey(0)
 
-phim_dims = np.shape(phim)
+    phim_dims = np.shape(phim)
 
-phim_norm = phim/np.max(phim)
-phim_gray = phim_norm*255
+    phim_norm = phim/np.max(phim)  # normalised image
+    phim_gray = phim_norm*255  # greyscale image
 
-edged = cv2.Canny(phim_gray.astype('uint8'), 20, 200)
-bigbg = cv2.dilate(~phmask.astype('uint8'), None, iterations=4)  # dilate background mask
-bigbg[bigbg == 254] = 0
+    edged = cv2.Canny(phim_gray.astype('uint8'), 20, 200)  # edge detection
+    bigbg = cv2.dilate(~phmask.astype('uint8'), None, iterations=4)  # dilate background mask
+    bigbg[bigbg == 254] = 0
 
-edged = edged*~bigbg
+    edged = edged*~bigbg
 
-cv2.imshow('Dilated Background', bigbg)
-cv2.waitKey(0)
+    cv2.imshow('Dilated Background', bigbg)
+    cv2.waitKey(0)
 
-cv2.imshow('Canny Filter', edged.astype('float32'))
-cv2.waitKey(0)
+    cv2.imshow('Canny Filter', edged.astype('float32'))
+    cv2.waitKey(0)
 
-edgedd = cv2.dilate(edged, None, iterations=1)
+    edgedd = cv2.dilate(edged, None, iterations=1)
 
-cv2.imshow('Canny Dilated', edgedd.astype('float32'))
-cv2.waitKey(0)
+    cv2.imshow('Canny Dilated', edgedd.astype('float32'))
+    cv2.waitKey(0)
 
-edgede = cv2.erode(edgedd, None, iterations=1)
+    edgede = cv2.erode(edgedd, None, iterations=1)
 
-cv2.imshow('Canny Eroded', edgede.astype('float32'))
-cv2.waitKey(0)
+    cv2.imshow('Canny Eroded', edgede.astype('float32'))
+    cv2.waitKey(0)
 
-lines_im = phmask.copy()
+    lines_im = phmask.copy()
 
-minLineLength = 20
-maxLineGap = 5
-lines = cv2.HoughLinesP(edgede, 1, np.pi/180, 5, minLineLength, maxLineGap)
+    minLineLength = 20
+    maxLineGap = 5
+    lines = cv2.HoughLinesP(edgede, 1, np.pi/180, 5, minLineLength, maxLineGap)
 
-no_lines = lines.shape
-no_lines = no_lines[0]
-print('The number of lines detected is = ', no_lines)
+    no_lines = lines.shape
+    no_lines = no_lines[0]
+    print('The number of lines detected is = ', no_lines)
 
-for lineno in np.linspace(0, no_lines-1, no_lines, dtype=int):
-    for x1, y1, x2, y2 in lines[lineno]:
-        cv2.line(lines_im, (x1, y1), (x2, y2), 0, 2)
+    for lineno in np.linspace(0, no_lines-1, no_lines, dtype=int):
+        for x1, y1, x2, y2 in lines[lineno]:
+            cv2.line(lines_im, (x1, y1), (x2, y2), 0, 2)
 
-label_this = edgede*lines_im
+    label_this = edgede*lines_im
 
-cv2.imshow('Rods Detected', label_this.astype('float32'))
-cv2.waitKey(0)
+    cv2.imshow('Rods Detected', label_this.astype('float32'))
+    cv2.waitKey(0)
 
-label_img, num = label(label_this, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
-print('Number of regions detected (should be 6!!!) = ', num)
+    label_img, num = label(label_this, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
+    print('Number of regions detected (should be 6!!!) = ', num)
 
-cv2.imshow('Rods labelled', label_img.astype('float32'))
-cv2.waitKey(0)
+    cv2.imshow('Rods labelled', label_img.astype('float32'))
+    cv2.waitKey(0)
 
-props = regionprops(label_img)  # returns region properties for labelled image
-cent = np.zeros([num, 2])
+    props = regionprops(label_img)  # returns region properties for labelled image
+    cent = np.zeros([num, 2])
 
-marker_im = phmask.copy()
+    marker_im = phmask.copy()
 
-for xx in range(num):
-    cent[xx, :] = props[xx].centroid  # central coordinate
+    for xx in range(num):
+        cent[xx, :] = props[xx].centroid  # central coordinate
+        # TODO: or should this be centre of mass?
 
-cent = np.round(cent).astype(int)
+    cent = np.round(cent).astype(int)
 
-for i in cent:
-    # draw the center of the circle
-    cv2.circle(marker_im, (i[0], i[1]), 1, 0, 1)
+    for i in cent:
+        # draw the center of the circle
+        cv2.circle(marker_im, (i[0], i[1]), 1, 0, 1)
 
-marker_im = marker_im*255
-cv2.imshow('marker image', marker_im.astype('uint8'))
-cv2.waitKey(0)
+    marker_im = marker_im*255
+    cv2.imshow('marker image', marker_im.astype('uint8'))
+    cv2.waitKey(0)
+
+"""START MEASURING HERE"""
 
 temp1 = []
 temp2 = []
@@ -218,8 +224,7 @@ src3 = (src3[0], src3[1])
 dst3 = temp3[1]
 dst3 = (dst3[0], dst3[1])
 
-
-#TODO: repalce marker_im with RGB/grayscale image of phantom and draw coloured lines on image instead
+# TODO: replace marker_im with RGB/grayscale image of phantom and draw coloured lines on image instead
 hmarker_im = marker_im.copy()  # for horizontal lines
 vmarker_im = marker_im.copy()  # for vertical lines
 

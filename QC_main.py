@@ -4,7 +4,7 @@ from QC_mod import phantomimage_dicom, explore_noise, create_report, MagNETdata_
 def main():
 
     gen = phantomimage_dicom()  # generic phantom object (2D)
-    dicomfile, single_slice_im, imdims = gen.dicom_read_and_write(False)
+    dicomfile, single_slice_im, df, imdims = gen.dicom_read_and_write(False)
 
     src = (imdims[0] / 2, 0 + 1)  # starting point
     dst = (imdims[0] / 2, imdims[1] - 1)  # finish point
@@ -31,11 +31,11 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
-    gen = MagNETdata_dicom()  # MagNET data class
-    dicomfile, single_slice_im, df, imdims = gen.dicom_read_and_write()
+    main()
+    #gen = MagNETdata_dicom()  # MagNET data class
+    #dicomfile, single_slice_im, df, imdims = gen.dicom_read_and_write()
 
-    xdim, ydim, zdim = imdims
+    #xdim, ydim, zdim = imdims
 
 
 
