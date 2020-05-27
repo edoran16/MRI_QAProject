@@ -102,7 +102,7 @@ def plot_matches(im1, im2, locs1, locs2, matchscores, mask, show_below=True):
             mark1a = mark1.pt
             mark2 = locs2[i]
             mark2a = mark2.pt
-            if mask[int(mark1a[0]), int(mark1a[1])] == 1 and mask[int(mark2a[0]), int(mark2a[1])] == 1:
+            if mask[int(mark1a[0]), int(mark1a[1])] >= 1 and mask[int(mark2a[0]), int(mark2a[1])] >= 1:
                 plt.plot([mark1a[1], mark2a[1]+cols1], [mark1a[0], mark2a[0]], 'r--')  # plot([x1, x2], [y1, y2])
                 #plt.plot(mark1a[1], mark1a[0], 'ro')
                 #plt.plot(mark2a[1]+cols1, mark2a[0], 'ro')

@@ -95,60 +95,67 @@ for imslice in np.linspace(0, no_slices-1, no_slices, dtype=int):
 
 idx = 0
 
-for zz in [22, 23]:#np.linspace():#(6, 35, 30):#range(no_slices):
+for zz in np.linspace(7, 35, 29):# slices 7-->36 are indexed 6-->35, 30 slices in total
+    # actually want to start on index 7 so that zz-1 = 6 is slice 7
     print('Slice ', int(zz+1))
     zz = int(zz)  # slice of interest
-    phmask = mask3D[zz, :, :]  # phantom mask
-    phim = imdata[zz, :, :]*phmask  # phantom image
-    bgim = imdata[zz, :, :]*~phmask  # background image
 
-    phim_dims = np.shape(phim)
+    phmask1 = mask3D[zz-1, :, :]  # phantom mask
+    phim1 = imdata[zz-1, :, :]*phmask1  # phantom image
+    bgim1 = imdata[zz-1, :, :]*~phmask1  # background image
 
-    phim_norm = phim/np.max(phim)  # normalised image
-    phim_gray = phim_norm*255  # greyscale image
+    phmask2 = mask3D[zz, :, :]  # phantom mask
+    phim2 = imdata[zz, :, :] * phmask2  # phantom image
+    bgim2 = imdata[zz, :, :] * ~phmask2  # background image
 
-    grayinv = 255-phim_gray
+    phim_dims = np.shape(phim1)
 
-    gray = grayinv.copy()
+    phim_norm1 = phim1/np.max(phim1)  # normalised image
+    phim_gray1 = phim_norm1*255  # greyscale image
+    grayinv1 = 255-phim_gray1
+
+    phim_norm2 = phim2 / np.max(phim2)  # normalised image
+    phim_gray2 = phim_norm2 * 255  # greyscale image
+    grayinv2 = 255 - phim_gray2
+
+    gray1 = grayinv1.copy()
+    gray2 = grayinv2.copy()
 
     # display image
-    cv2.imshow('inverted image', gray.astype('uint8'))
+    cv2.imshow('inverted image 1', gray1.astype('uint8'))
+    cv2.waitKey(0)
+    cv2.imshow('inverted image 2', gray2.astype('uint8'))
     cv2.waitKey(0)
 
-    keypoints, descriptors = pysift.computeKeypointsAndDescriptors(gray, sigma=0.3, num_intervals=1, assumed_blur=0, image_border_width=10)
+    kp1, dcp1 = pysift.computeKeypointsAndDescriptors(gray1, sigma=0.3, num_intervals=1, assumed_blur=0, image_border_width=10)
+    kp2, dcp2 = pysift.computeKeypointsAndDescriptors(gray2, sigma=0.3, num_intervals=1, assumed_blur=0, image_border_width=10)
 
-    if idx == 0:
-        kp1 = keypoints
-        dcp1 = descriptors
-        im1 = phim
-    if idx == 1:
-        kp2 = keypoints
-        dcp2 = descriptors
-        im2 = phim
+    im1 = phim1.copy()
+    im2 = phim2.copy()
 
-    idx = idx + 1
+    img1 = phmask1.copy()/np.max(phmask1)
+    for marker1 in kp1:
+        j, k = tuple(int(i) for i in marker1.pt)
+        if phmask1[j, k] == 1:  # if in phantom
+            img1 = cv2.circle(img1, (j, k), 1, 0, 1)
 
-    img = phmask.copy()/np.max(phmask)
-    count = 1
-    for marker in keypoints:
-        j, k = tuple(int(i) for i in marker.pt)
-        if phmask[j, k] == 1:  # if in phantom
-            img = cv2.circle(img, (j, k), 1, 0, 1)
-            #print(count)
-            count = count + 1
+    img2 = phmask2.copy() / np.max(phmask2)
+    for marker2 in kp2:
+        g, h = tuple(int(f) for f in marker2.pt)
+        if phmask2[g, h] == 1:  # if in phantom
+            img2 = cv2.circle(img2, (g, h), 1, 0, 1)
 
-    cv2.imshow('Features Detected', img)
+    cv2.imshow('Features Detected 1', img1)
     cv2.waitKey(0)
 
-print(np.shape(dcp1), np.shape(dcp2))
+    cv2.imshow('Features Detected 2', img2)
+    cv2.waitKey(0)
 
-scores_for_match = sift.match_twosided(dcp1, dcp2)
+    scores_for_match = sift.match_twosided(dcp1, dcp2)
 
-print(np.shape(scores_for_match))
+    sift.appendimages(im1, im2)
 
-sift.appendimages(im1, im2)
-
-sift.plot_matches(im1, im2, kp1, kp2, scores_for_match, phmask, show_below=True)
+    sift.plot_matches(im1, im2, kp1, kp2, scores_for_match, phmask1+phmask2, show_below=True)
 
 
 #cv2.imwrite('sift_keypoints.jpg', img)
