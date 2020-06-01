@@ -9,20 +9,40 @@ import cv2
 def midpoint(ptA, ptB):
     return (ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5
 
+
 def slice_pos_meta(dicomfile):
     """ extract metadata for slice postion info calculations
     dicomfile = pydicom.dataset.FileDataset"""
-    elem = dicomfile[0x5200, 0x9230]  # pydicom.dataelem.DataElement, (Per-frame Functional Groups Sequence)
+
+    # rows and columns
+    rows = dicomfile[0x0028, 0x0010]
+    rows = rows.value
+    cols = dicomfile[0x0028, 0x0011]
+    cols = cols.value
+    matrix_size = [rows, cols]
+
+    # TODO: FoV and Private Tag Data Access
+    # shared_func_groups_seq = dicomfile[0x5200, 0x9229]
+    # shared_func_groups_seq = shared_func_groups_seq.value
+    # for xx in shared_func_groups_seq:
+    #     PrivateTagData = xx[0x002110fe]
+    #
+    # PrivateTagData = PrivateTagData[0]
+    # for yy in PrivateTagData:
+    #     #print(yy.value)
+    #     print(yy.value)
+
+    # per-frame functional group sequence
+    elem = dicomfile[0x5200, 0x9230]  # pydicom.dataelem.DataElement
     seq = elem.value  # pydicom.sequence.Sequence
     elem3 = seq[0]  # first frame
     elem4 = elem3.PixelMeasuresSequence  # pydicom.sequence.Sequence
 
     for xx in elem4:
         st = xx.SliceThickness
-        slice_space = xx.SpacingBetweenSlices
         pixels_space = xx.PixelSpacing
 
-    return st, slice_space, pixels_space
+    return matrix_size, st, pixels_space
 
 
 def create_3D_mask(imdata, dims):
@@ -93,3 +113,26 @@ def find_centre_and_area_of_phantom(phmask, plotflag=False):
         cv2.waitKey(0)
 
     return cent, pharea
+
+
+if __name__ == '__main__':
+
+    from DICOM_test import dicom_read_and_write
+    import os
+
+    directpath = "MagNET_acceptance_test_data/scans/"
+    folder = "42-SLICE_POS"
+
+    pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
+
+    with os.scandir(pathtodicom) as it:
+        for file in it:
+            path = "{0}{1}".format(pathtodicom, file.name)
+
+    ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
+    mat_sz, st, pixels_space = slice_pos_meta(ds)
+
+    print('Matrix size = ', mat_sz[0], 'x', mat_sz[1])
+    print('Slice thickness = ', st, 'mm')
+    print('Pixel Dimensions = ', pixels_space, 'mm^2')
+

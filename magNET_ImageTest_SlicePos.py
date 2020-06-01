@@ -6,6 +6,7 @@ import numpy as np
 import os
 import sys
 import cv2
+import pandas as pd
 
 from DICOM_test import dicom_read_and_write
 from scipy.spatial import distance as dist
@@ -26,7 +27,7 @@ ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
 
 try:
     xdim, ydim, zdim = dims
-    #OrthoSlicer3D(imdata).show()  # look at 3D volume data
+    # OrthoSlicer3D(imdata).show()  # look at 3D volume data
 except ValueError:
     print('DATA INPUT ERROR: this is 2D image data')
     sys.exit()
@@ -34,22 +35,28 @@ except ValueError:
 # create 3D mask
 mask3D = spf.create_3D_mask(imdata, dims)
 
-#OrthoSlicer3D(imdata).show()  # look at 3D volume data
+# OrthoSlicer3D(imdata).show()  # look at 3D volume data
 
 # For slice position analysis want to do analysis on every slice but for now start with mid-slice
 # TODO: only interested in slices 8 to 36 as this is where rods are... need to detect this range!!
-# TODO: make this code work for every slice! Measurments need to be refined to match excel sheet.
-
+# TODO: make this code work for every slice! Measurements need to be refined to match excel sheet.
+# initialise variable for plotting results
 error = []
 distance = []
 pos_m = []
 pos_c = []
-idx = 0  # need this to save first slice postion
-too_many_regions = 0
+idx = 0  # need this to save first slice position
+too_many_regions = 0  # to improve rod detection error
+switch_sign = False  # for switching plus/minus sign in equation for measured slice position
+show_meas = False  # for showing measurements made on each slice iteration
+# for video
+img_array = []
+make_video = False
 
 for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
-    print('Slice ', int(zz+1))
     zz = int(zz)
+    print('Actual Slice Number ', zz+1)
+    print('Relevant Slice Number', idx+1)
     phmask = mask3D[zz, :, :]  # phantom mask
     phim = imdata[zz, :, :]*phmask  # phantom image
     bgim = imdata[zz, :, :]*~phmask  # background image
@@ -93,12 +100,10 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     minLineLength = 10
     maxLineGap = 10
     theta = np.pi/2  # 90 degrees to detect horizontal lines
-    print(edgede.dtype, np.min(edgede), np.max(edgede))
     lines = cv2.HoughLinesP(edgede, 1, theta, 5, minLineLength, maxLineGap)
 
     no_lines = lines.shape
     no_lines = no_lines[0]
-    #print('The number of lines detected is = ', no_lines)
 
     for lineno in np.linspace(0, no_lines-1, no_lines, dtype=int):
         for x1, y1, x2, y2 in lines[lineno]:
@@ -119,7 +124,7 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
     if num > 6:
         too_many_regions = too_many_regions + 1
-        print('Too many regions detected!')
+        print('Too many regions detected! =O')
 
         label_this2 = label_this.copy()
         minLineLength = 2
@@ -127,12 +132,10 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
         theta = np.pi  # 0 degrees to detect vertical lines
         label_this2 = label_this2.astype('uint8')
         lines_im2 = phmask.copy()
-        print(label_this2.dtype, np.min(label_this), np.max(label_this))
         lines = cv2.HoughLinesP(label_this2, 1, theta, 5, minLineLength, maxLineGap)
 
         no_lines = lines.shape
         no_lines = no_lines[0]
-        # print('The number of lines detected is = ', no_lines)
 
         for lineno in np.linspace(0, no_lines - 1, no_lines, dtype=int):
             for x1, y1, x2, y2 in lines[lineno]:
@@ -156,7 +159,6 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     # cv2.imshow('Rods labelled', label_img.astype('float32'))
     # cv2.waitKey(0)
 
-    # TODO: put coloured rois over detected rods. Convert image to BGR.
     # plt.figure()
     # plt.imshow(label_img)
     # plt.show()
@@ -164,19 +166,18 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     props = regionprops(label_img)  # returns region properties for labelled image
     cent = np.zeros([num, 2])
 
-    marker_im = phmask.copy()
+    marker_im = phim_gray.copy()
+    marker_im = marker_im.astype('uint8')
+    marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
 
     for xx in range(num):
         cent[xx, :] = props[xx].centroid  # central coordinate
-        # TODO: or should this be centre of mass?
 
-    cent = np.round(cent).astype(int)
+    cent = cent.astype(int)
 
     for i in cent:
         # draw the center of the circle
-        cv2.circle(marker_im, (i[1], i[0 ]), 1, 0, 1)
-
-    marker_im = marker_im*255
+        cv2.circle(marker_im, (i[1], i[0]), 1, (0, 0, 255), 1)
 
     # cv2.imshow('marker image', marker_im.astype('uint8'))
     # cv2.waitKey(0)
@@ -237,94 +238,91 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
         dst3 = temp3[0]
         dst3 = (dst3[1], dst3[0])
 
-    # TODO: replace marker_im with RGB/grayscale image of phantom and draw coloured lines on image instead
-    hmarker_im = marker_im.copy()  # for horizontal lines
-    vmarker_im = marker_im.copy()  # for vertical lines
+    hmarker_im = phim_gray.copy()
+    hmarker_im = hmarker_im.astype('uint8')
+    hmarker_im = cv2.cvtColor(hmarker_im, cv2.COLOR_GRAY2BGR)  # for horizontal lines
 
-    cv2.line(hmarker_im, src1, dst1, 0, 1)
-    cv2.line(hmarker_im, src2, dst2, 0, 1)  # diagonal line between angled rods
-    #cv2.line(hmarker_im, (src2[0], int(cent2[0, 0])), (dst2[0], int(cent2[0, 0])), 0, 1)  # horizontal lines between angled rods
-    cv2.line(hmarker_im, src3, dst3, 0, 1)
+    vmarker_im = phim_gray.copy()
+    vmarker_im = vmarker_im.astype('uint8')
+    vmarker_im = cv2.cvtColor(vmarker_im, cv2.COLOR_GRAY2BGR)  # for horizontal lines
+
+    cv2.line(hmarker_im, src1, dst1, (0, 0, 255), 1)
+    cv2.line(hmarker_im, src2, dst2, (0, 0, 255), 1)  # diagonal line between angled rods
+    cv2.line(hmarker_im, src3, dst3, (0, 0, 255), 1)
 
     # cv2.imshow('horiz. marker image', hmarker_im.astype('uint8'))
     # cv2.waitKey(0)
 
-    cv2.line(vmarker_im, src1, src3, 0, 1)
-    cv2.line(vmarker_im, dst1, dst3, 0, 1)
-    #cv2.line(vmarker_im, (int(cent2[0, 1]), src2[1]), (int(cent2[0, 1]), dst2[1]), 0, 1)
+    cv2.line(vmarker_im, src1, src3, (0, 0, 255), 1)
+    cv2.line(vmarker_im, dst1, dst3, (0, 0, 255), 1)
 
     # cv2.imshow('vert. marker image', vmarker_im.astype('uint8'))
     # cv2.waitKey(0)
 
-    #compute the Euclidean distance between the midpoints
-    # TODO: confirm what the voxel size is.
+    # compute the Euclidean distance between the midpoints (output in terms of number of voxels)
     # horizontal lines
     hdist1 = dist.euclidean(src1, dst1)
     hdist2 = dist.euclidean(src2, dst2)  # diagonal centre to centre
-    #hdist2 = dist.euclidean((src2[0], int(cent2[0, 0])), (dst2[0], int(cent2[0, 0])))
     hdist3 = dist.euclidean(src3, dst3)
 
-    #print('Horizontal distance (top) = ', hdist1, 'mm')
-    #print('Horizontal distance between angled rods = ', hdist2, 'mm')
-    #print('Measured distance between angled rods = ', hdist2, 'mm')
-    #print('Horizontal distance (bottom) = ', hdist3, 'mm')
-
     # horizontal lines
-    cv2.putText(hmarker_im, "{:.1f}mm".format(hdist1), (int(phim_dims[0]/2), int(dst1[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 255, 1)
-    cv2.putText(hmarker_im, "{:.1f}mm".format(hdist2), (src2[0] + 30, int(phim_dims[1]/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 0, 1)
-    cv2.putText(hmarker_im, "{:.1f}mm".format(hdist3), (int(phim_dims[0]/2), int(dst3[1] + 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 0, 1)
-
-    # cv2.imshow("horiz. measurements", hmarker_im.astype('uint8'))
-    # cv2.waitKey(0)
+    cv2.putText(hmarker_im, "{:.1f}mm".format(hdist1), (int(phim_dims[0]/2), int(dst1[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
+    cv2.putText(hmarker_im, "{:.1f}mm".format(hdist2), (src2[0] + 30, int(phim_dims[1]/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
+    cv2.putText(hmarker_im, "{:.1f}mm".format(hdist3), (int(phim_dims[0]/2), int(dst3[1] + 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
 
     # vertical lines
-    # TODO: confirm voxel dimensions
-    vdist1 = dist.euclidean(src1, src3)
-    vdist2 = dist.euclidean(dst1, dst3)
-    #vdist3 = dist.euclidean((int(cent2[0, 1]), src2[1]), (int(cent2[0, 1]), dst2[1]))
+    vdist1 = dist.euclidean(src1, src3)  # LHS
+    vdist2 = dist.euclidean(dst1, dst3)  # RHS
 
-    #print('Vertical distance (left) = ', vdist1, 'mm')
-    #print('Vertical distance (right) = ', vdist2, 'mm')
-    #print('Vertical distance between angled rods = ', vdist3, 'mm')
+    cv2.putText(vmarker_im, "{:.1f}mm".format(vdist1), (int(src1[0] + 5), int(src3[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
+    cv2.putText(vmarker_im, "{:.1f}mm".format(vdist2), (int(dst1[0] + 15), int(dst3[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
 
-    cv2.putText(vmarker_im, "{:.1f}mm".format(vdist1), (int(src1[0] + 5), int(src3[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, 0, 1)
-    cv2.putText(vmarker_im, "{:.1f}mm".format(vdist2), (int(dst1[0] + 15), int(dst3[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, 255, 1)
-    #cv2.putText(vmarker_im, "{:.1f}mm".format(vdist3), (int(phim_dims[0]/2), int(phim_dims[1]/2) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, 0, 1)
+    final_markers = cv2.vconcat((hmarker_im.astype('uint8'), vmarker_im.astype('uint8')))
 
-    # cv2.imshow("vert. measurements", vmarker_im.astype('uint8'))
-    # cv2.waitKey(0)
+    if show_meas:
+        cv2.imshow("Measurements", final_markers)
+        cv2.waitKey(0)
 
     # CALCULATIONS
     RDA = [120, 120, 120, 120]  # what the measurements should be
-    RDM = [hdist1*0.98, hdist3*0.98, vdist1*0.98, vdist2*0.98]  # what is measured from the image
-    # TODO: confirm voxel size is 1 x 1 mm or 0.98 x 0.98 mm
+
+    matrix_size, slice_thickness, pixeldims = spf.slice_pos_meta(ds)
+
+    RDM = [hdist1/pixeldims[0], hdist3/pixeldims[0], vdist1/pixeldims[1], vdist2/pixeldims[1]]
+    # what is measured from the image slice ^^^
 
     CFall = np.divide(RDA, RDM)
-    CF = np.mean(CFall)
-    #print('Mean Correction Factor = ', CF)
+    CF = np.mean(CFall)  # average of 4 measurements
 
-    distance_of_angled_rods = hdist2*0.98  # distance between angled rods
+    distance_of_angled_rods = hdist2  # distance between angled rods
 
     # TODO: remove brute force method with something more sophisticated and robust...
-    if idx < 15:
-        slice_position_measured = np.sqrt(((distance_of_angled_rods*CF)**2) - (6.5**2))/2  # how this relates to position
-    elif idx >= 15:
-        slice_position_measured = -np.sqrt(((distance_of_angled_rods*CF)**2) - (6.5**2))/2  # how this relates to position
-    print('Measured position = ', slice_position_measured)
+    if 7.5 < distance_of_angled_rods < 8.5:  # tolerance of +/- 0.5 mm
+        switch_sign = True
+        print('THE SIGN IS SWITCHED!!!!')
+
+    # plus sign
+    slice_position_measured = np.sqrt(((distance_of_angled_rods*CF)**2) - (6.5**2))/2
+    # how measurement relates to slice position
+
+    # minus sign
+    if switch_sign:
+        slice_position_measured = -np.sqrt(((distance_of_angled_rods*CF)**2) - (6.5**2))/2
+        # how measurement relates to slice position
 
     if idx == 0:
-        first_slice_position = slice_position_measured  # slice 1 get this from header info? is this slice number...?
+        first_slice_position = slice_position_measured
+        # first calculated slice position = first measured slice position
 
-    slice_position = idx  # slice number
-    slice_thickness, slice_gap, pixeldims = spf.slice_pos_meta(ds)
+    slice_position = idx+1  # slice number
 
     slice_position_calculated = first_slice_position - ((slice_position - 1)*slice_thickness)
-    #print('Calculated position = ', slice_position_calculated)
 
     slice_position_error = slice_position_calculated - slice_position_measured
-    #print('Error = ', slice_position_error, 'mm (must be within +- 1 mm)')
 
-    distance.append(hdist2*0.98)
+    img_array.append(final_markers)  # for making video
+    vid_dims = final_markers.shape
+    distance.append(hdist2)
     pos_m.append(slice_position_measured)
     pos_c.append(slice_position_calculated)
     error.append(slice_position_error)
@@ -332,20 +330,74 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     idx = idx + 1
 
 plt.figure()
-plt.subplot(221)
+plt.subplot(131)
 plt.plot(np.linspace(8, 36, 29), distance)
 plt.title('Slice Number vs. Distance')
+plt.subplot(132)
+plt.plot(np.linspace(8, 36, 29), pos_m)
+plt.plot(np.linspace(8, 36, 29), pos_c)
+plt.legend(['Measured', 'Calculated'])
+plt.title('Slice Number vs. Position')
+plt.subplot(133)
+plt.plot(np.linspace(8, 36, 29), error)
+plt.plot(np.linspace(8, 36, 29), np.repeat(-2, 29), 'r')
+plt.plot(np.linspace(8, 36, 29), np.repeat(2, 29), 'r')
+plt.title('Slice Number vs. Slice Position Error')
+plt.show()
+
+# create video
+if make_video:
+    print('making video ! ... ')
+    out = cv2.VideoWriter('SlicePos.avi', cv2.VideoWriter_fourcc(*"MJPG"), 2, (vid_dims[1], vid_dims[0]))
+
+    for i in range(len(img_array)):
+        print('Frame', i+1, '/', len(img_array))
+        print(np.shape(img_array[i]))
+        out.write(img_array[i])
+    out.release()
+
+# Comparison with MagNET Report
+df = pd.read_excel(r'Sola_INS_07_05_19.xls', sheet_name='Slice Position Sola')
+
+sola_distance = df.Position  # slice 7 -> 36 (I have analysed slice 8 to 36)
+sola_distance = sola_distance[1:31]
+
+sola_pos_m = df['Unnamed: 5']
+sola_pos_m = sola_pos_m[1:31]
+
+sola_pos_c = df['Unnamed: 6']
+sola_pos_c = sola_pos_c[1:31]
+
+sola_error = df['Unnamed: 7']
+sola_error = sola_error[1:31]
+
+plt.figure()
+plt.subplot(221)
+plt.plot(np.linspace(8, 36, 29), distance)
+plt.plot(np.linspace(7, 36, 30), sola_distance)
+plt.legend(['Python', 'Macro'])
+plt.title('Measured Rod Distance')
+
 plt.subplot(222)
 plt.plot(np.linspace(8, 36, 29), pos_m)
-plt.title('Slice Number vs. Measured Position')
+plt.plot(np.linspace(7, 36, 30), sola_pos_m)
+plt.legend(['Python', 'Macro'])
+plt.title('Measured Position')
+
 plt.subplot(223)
 plt.plot(np.linspace(8, 36, 29), pos_c)
-plt.title('Slice Number vs. Calculated Position')
+plt.plot(np.linspace(7, 36, 30), sola_pos_c)
+plt.legend(['Python', 'Macro'])
+plt.title('Calculated Position')
+
 plt.subplot(224)
 plt.plot(np.linspace(8, 36, 29), error)
-plt.plot(np.linspace(8, 36, 29), np.repeat(-1, 29))
-plt.plot(np.linspace(8, 36, 29), np.repeat(1, 29))
-plt.title('Slice Number vs. Slice Position Error')
+plt.plot(np.linspace(7, 36, 30), sola_error)
+plt.plot(np.linspace(7, 36, 30), np.repeat(-2, 30), 'r')
+plt.plot(np.linspace(7, 36, 30), np.repeat(2, 30), 'r')
+plt.plot(np.linspace(7, 36, 30), np.repeat(0, 30), 'r--')
+plt.legend(['Python', 'Macro', 'Pass/Fail Region'], loc='upper right', bbox_to_anchor=(1, 0.9), fontsize='x-small')
+plt.title('Position Error')
 plt.show()
 
 
