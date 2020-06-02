@@ -87,7 +87,7 @@ def create_3D_mask(imdata, dims):
         if slice_dim == 2:
             mask3D[:, :, imslice] = ch
 
-    return mask3D
+    return mask3D, no_slices
 
 
 def find_centre_and_area_of_phantom(phmask, plotflag=False):

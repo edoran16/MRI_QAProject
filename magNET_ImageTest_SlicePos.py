@@ -33,7 +33,7 @@ except ValueError:
     sys.exit()
 
 # create 3D mask
-mask3D = spf.create_3D_mask(imdata, dims)
+mask3D, no_slices = spf.create_3D_mask(imdata, dims)
 
 # OrthoSlicer3D(imdata).show()  # look at 3D volume data
 
@@ -53,6 +53,89 @@ show_meas = False  # for showing measurements made on each slice iteration
 img_array = []
 make_video = False
 
+# detect slice range for analysis
+pass_fail = []
+for aa in range(no_slices):
+    aa = int(aa)
+    phmask = mask3D[aa, :, :]  # phantom mask
+    phim = imdata[aa, :, :] * phmask  # phantom image
+
+    ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=False)
+
+    if pharea > 30000:
+        # this slice contains phantom area greater than expected. Likely to be noise. Eliminate for analysis range.
+        pass_fail.append(0)
+    else:
+        # THICK RECTANGULAR LINE DETECTION
+        phim_dims = np.shape(phim)
+        phim_norm = phim / np.max(phim)  # normalised image
+        phim_gray = phim_norm * 255  # greyscale image
+
+        ret, th = cv2.threshold(phim_gray.astype('uint8'), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        th2 = 255 - th
+        bigphmask = cv2.erode(phmask.astype('uint8'), None, iterations=3)  # erode phantom mask to elimate edge effect
+        bigphmask2 = bigphmask*255
+        th3 = th2*(phmask*bigphmask2)
+        # print(type(th), np.min(th), np.max(th))
+
+        label_img, num = label(th3, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
+
+        props = regionprops(label_img)  # returns region properties for labelled image
+
+        marker_im = phim_gray.copy()
+        marker_im = marker_im.astype('uint8')
+        marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
+        cntr = 0  # counter for counting rectangle + (2  squares). If cntr reaches 3 then slice eliminated
+        for xx in range(num):
+            centtemp = props[xx].centroid
+            areatemp = props[xx].area
+            # conditions for bottom long rectangular shape detection
+            if 600 < areatemp < 800:
+                if centtemp[0] > 170:  # row below (but greater than since -y axis) 170 = bottom region of phantom
+                    if 100 < centtemp[1] < 150:  # col in this range is central region of phantom
+                        print('rectangular region detected!')
+                        cntr = cntr + 1
+                        bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
+                        min_row, min_col, max_row, max_col = bboxx
+                        # draw the bounding box
+                        cv2.line(marker_im, (min_col, min_row), (max_col, min_row), (0, 0, 255), 1)
+                        cv2.line(marker_im, (max_col, min_row), (max_col, max_row), (0, 0, 255), 1)
+                        cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
+                        cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
+
+            # conditions for L and R square shape detection
+            if 100 < areatemp < 160:
+                if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
+                    if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
+                        print('square region detected!')
+                        cntr = cntr + 1
+                        bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
+                        min_row, min_col, max_row, max_col = bboxx
+                        # draw the bounding box
+                        cv2.line(marker_im, (min_col, min_row), (max_col, min_row), (0, 0, 255), 1)
+                        cv2.line(marker_im, (max_col, min_row), (max_col, max_row), (0, 0, 255), 1)
+                        cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
+                        cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
+
+        # cv2.imshow('marker image', marker_im.astype('uint8'))
+        # cv2.waitKey(0)
+
+        if cntr > 1:
+            pass_fail.append(0)  # eliminate this slice as two side squares have been detected
+        if cntr == 0:
+            pass_fail.append(0)  # eliminate this slice as no rectangular or square regions have been detected
+        if cntr == 1:
+            pass_fail.append(1)  # analyse this slice as rectangular region detected only
+
+print(pass_fail)
+# # print(no_slices)
+# print(len(pass_fail))
+
+passes = np.where(pass_fail)
+print(passes)  # passes + 1 = actual slice number
+# TODO: deal with slices 7 and 37 (want to analyse 8 to 36)
+
+######################################################################################################################
 for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     zz = int(zz)
     print('Actual Slice Number ', zz+1)
@@ -63,10 +146,11 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
     ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=False)
     # TODO: use ^^ to help with detecting true phantom slices
+    print('phantom area = ', pharea)
 
     # display image
-    # cv2.imshow('phantom image', ((phim/np.max(phim))*255).astype('uint8'))
-    # cv2.waitKey(0)
+    cv2.imshow('phantom image', ((phim/np.max(phim))*255).astype('uint8'))
+    cv2.waitKey(0)
 
     phim_dims = np.shape(phim)
 
@@ -79,21 +163,21 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
     edged = edged*~bigbg
 
-    # cv2.imshow('Dilated Background', bigbg)
-    # cv2.waitKey(0)
+    cv2.imshow('Dilated Background', bigbg)
+    cv2.waitKey(0)
 
-    # cv2.imshow('Canny Filter', edged.astype('float32'))
-    # cv2.waitKey(0)
+    cv2.imshow('Canny Filter', edged.astype('float32'))
+    cv2.waitKey(0)
 
     edgedd = cv2.dilate(edged, None, iterations=1)
 
-    # cv2.imshow('Canny Dilated', edgedd.astype('float32'))
-    # cv2.waitKey(0)
+    cv2.imshow('Canny Dilated', edgedd.astype('float32'))
+    cv2.waitKey(0)
 
     edgede = cv2.erode(edgedd, None, iterations=1)
 
-    # cv2.imshow('Canny Eroded', edgede.astype('float32'))
-    # cv2.waitKey(0)
+    cv2.imshow('Canny Eroded', edgede.astype('float32'))
+    cv2.waitKey(0)
 
     lines_im = phmask.copy()
     # LINE DETECTION
@@ -111,13 +195,13 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
     label_this = edgede*lines_im
 
-    # cv2.imshow('After line removal', label_this.astype('float32'))
-    # cv2.waitKey(0)
+    cv2.imshow('After line removal', label_this.astype('float32'))
+    cv2.waitKey(0)
 
     label_this = opening(label_this)
 
-    # cv2.imshow('After opening', label_this.astype('float32'))
-    # cv2.waitKey(0)
+    cv2.imshow('After opening', label_this.astype('float32'))
+    cv2.waitKey(0)
 
     label_img, num = label(label_this, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
     print('Number of regions detected (should be 6!!!) = ', num)
@@ -143,8 +227,8 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
         label_this3 = label_this2 * lines_im2
 
-        # cv2.imshow('After 2nd line removal', label_this3.astype('float32'))
-        # cv2.waitKey(0)
+        cv2.imshow('After 2nd line removal', label_this3.astype('float32'))
+        cv2.waitKey(0)
 
         label_img2, num2 = label(label_this3, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
         print('Number of regions detected (should be 6!!!) = ', num2)
@@ -156,12 +240,12 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
         num = num2
         label_img = label_img2  # replace label_img with new version with less labelled regions
 
-    # cv2.imshow('Rods labelled', label_img.astype('float32'))
-    # cv2.waitKey(0)
+    cv2.imshow('Rods labelled', label_img.astype('float32'))
+    cv2.waitKey(0)
 
-    # plt.figure()
-    # plt.imshow(label_img)
-    # plt.show()
+    plt.figure()
+    plt.imshow(label_img)
+    plt.show()
 
     props = regionprops(label_img)  # returns region properties for labelled image
     cent = np.zeros([num, 2])
@@ -179,8 +263,8 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
         # draw the center of the circle
         cv2.circle(marker_im, (i[1], i[0]), 1, (0, 0, 255), 1)
 
-    # cv2.imshow('marker image', marker_im.astype('uint8'))
-    # cv2.waitKey(0)
+    cv2.imshow('marker image', marker_im.astype('uint8'))
+    cv2.waitKey(0)
 
     """START MEASURING HERE"""
 
