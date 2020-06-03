@@ -15,6 +15,7 @@ from nibabel.viewers import OrthoSlicer3D  # << actually do use this!!
 from skimage.morphology import opening
 
 directpath = "MagNET_acceptance_test_data/scans/"
+imagepath = "MagNET_acceptance_test_data/Slice_Position_Images/"
 folder = "42-SLICE_POS"
 
 pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
@@ -37,120 +38,44 @@ mask3D, no_slices = spf.create_3D_mask(imdata, dims)
 
 # OrthoSlicer3D(imdata).show()  # look at 3D volume data
 
-# For slice position analysis want to do analysis on every slice but for now start with mid-slice
-# TODO: only interested in slices 8 to 36 as this is where rods are... need to detect this range!!
-# TODO: make this code work for every slice! Measurements need to be refined to match excel sheet.
-# initialise variable for plotting results
+# initialise variables for plotting results
 error = []
 distance = []
 pos_m = []
 pos_c = []
 idx = 0  # need this to save first slice position
 too_many_regions = 0  # to improve rod detection error
-switch_sign = False  # for switching plus/minus sign in equation for measured slice position
+switch_sign = False  # INITIALLY FALSE: for switching plus/minus sign in equation for measured slice position
 show_meas = False  # for showing measurements made on each slice iteration
 # for video
 img_array = []
-make_video = False
+make_video = True  # produce 2 videos
+# for calculations
+first_slice_position = []
 
 # detect slice range for analysis
-pass_fail = []
-for aa in range(no_slices):
-    aa = int(aa)
-    phmask = mask3D[aa, :, :]  # phantom mask
-    phim = imdata[aa, :, :] * phmask  # phantom image
+start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=True, savepng=True)
 
-    ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=False)
+show_graphical = True
 
-    if pharea > 30000:
-        # this slice contains phantom area greater than expected. Likely to be noise. Eliminate for analysis range.
-        pass_fail.append(0)
-    else:
-        # THICK RECTANGULAR LINE DETECTION
-        phim_dims = np.shape(phim)
-        phim_norm = phim / np.max(phim)  # normalised image
-        phim_gray = phim_norm * 255  # greyscale image
-
-        ret, th = cv2.threshold(phim_gray.astype('uint8'), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        th2 = 255 - th
-        bigphmask = cv2.erode(phmask.astype('uint8'), None, iterations=3)  # erode phantom mask to elimate edge effect
-        bigphmask2 = bigphmask*255
-        th3 = th2*(phmask*bigphmask2)
-        # print(type(th), np.min(th), np.max(th))
-
-        label_img, num = label(th3, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
-
-        props = regionprops(label_img)  # returns region properties for labelled image
-
-        marker_im = phim_gray.copy()
-        marker_im = marker_im.astype('uint8')
-        marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
-        cntr = 0  # counter for counting rectangle + (2  squares). If cntr reaches 3 then slice eliminated
-        for xx in range(num):
-            centtemp = props[xx].centroid
-            areatemp = props[xx].area
-            # conditions for bottom long rectangular shape detection
-            if 600 < areatemp < 800:
-                if centtemp[0] > 170:  # row below (but greater than since -y axis) 170 = bottom region of phantom
-                    if 100 < centtemp[1] < 150:  # col in this range is central region of phantom
-                        print('rectangular region detected!')
-                        cntr = cntr + 1
-                        bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
-                        min_row, min_col, max_row, max_col = bboxx
-                        # draw the bounding box
-                        cv2.line(marker_im, (min_col, min_row), (max_col, min_row), (0, 0, 255), 1)
-                        cv2.line(marker_im, (max_col, min_row), (max_col, max_row), (0, 0, 255), 1)
-                        cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
-                        cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
-
-            # conditions for L and R square shape detection
-            if 100 < areatemp < 160:
-                if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
-                    if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
-                        print('square region detected!')
-                        cntr = cntr + 1
-                        bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
-                        min_row, min_col, max_row, max_col = bboxx
-                        # draw the bounding box
-                        cv2.line(marker_im, (min_col, min_row), (max_col, min_row), (0, 0, 255), 1)
-                        cv2.line(marker_im, (max_col, min_row), (max_col, max_row), (0, 0, 255), 1)
-                        cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
-                        cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
-
-        # cv2.imshow('marker image', marker_im.astype('uint8'))
-        # cv2.waitKey(0)
-
-        if cntr > 1:
-            pass_fail.append(0)  # eliminate this slice as two side squares have been detected
-        if cntr == 0:
-            pass_fail.append(0)  # eliminate this slice as no rectangular or square regions have been detected
-        if cntr == 1:
-            pass_fail.append(1)  # analyse this slice as rectangular region detected only
-
-print(pass_fail)
-# # print(no_slices)
-# print(len(pass_fail))
-
-passes = np.where(pass_fail)
-print(passes)  # passes + 1 = actual slice number
-# TODO: deal with slices 7 and 37 (want to analyse 8 to 36)
-
-######################################################################################################################
-for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
+for zz in range(start_slice, last_slice+1):
+    print(zz)
     zz = int(zz)
     print('Actual Slice Number ', zz+1)
     print('Relevant Slice Number', idx+1)
+
     phmask = mask3D[zz, :, :]  # phantom mask
     phim = imdata[zz, :, :]*phmask  # phantom image
     bgim = imdata[zz, :, :]*~phmask  # background image
 
     ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=False)
-    # TODO: use ^^ to help with detecting true phantom slices
-    print('phantom area = ', pharea)
+    # use ph_centre for defining where to put measurement text on final display
 
     # display image
-    cv2.imshow('phantom image', ((phim/np.max(phim))*255).astype('uint8'))
-    cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}phantom_image_slice_{1}.png".format(imagepath, zz+1), ((phim/np.max(phim))*255).astype('uint8'))
+        cv2.imshow('phantom image', ((phim/np.max(phim))*255).astype('uint8'))
+        cv2.waitKey(0)
 
     phim_dims = np.shape(phim)
 
@@ -163,21 +88,28 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
     edged = edged*~bigbg
 
-    cv2.imshow('Dilated Background', bigbg)
-    cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}dilated_background_slice_{1}.png".format(imagepath, zz + 1), bigbg)
+        cv2.imshow('Dilated Background', bigbg)
+        cv2.waitKey(0)
 
-    cv2.imshow('Canny Filter', edged.astype('float32'))
-    cv2.waitKey(0)
+        cv2.imwrite("{0}cannyfilter1_slice_{1}.png".format(imagepath, zz + 1), (edged*255).astype('uint8'))
+        cv2.imshow('Canny Filter', edged.astype('float32'))
+        cv2.waitKey(0)
 
     edgedd = cv2.dilate(edged, None, iterations=1)
 
-    cv2.imshow('Canny Dilated', edgedd.astype('float32'))
-    cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}dilation1_slice_{1}.png".format(imagepath, zz + 1), edgedd.astype('float32'))
+        cv2.imshow('Canny Dilated', edgedd.astype('float32'))
+        cv2.waitKey(0)
 
     edgede = cv2.erode(edgedd, None, iterations=1)
 
-    cv2.imshow('Canny Eroded', edgede.astype('float32'))
-    cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}erosion1_slice_{1}.png".format(imagepath, zz + 1), (edgede*255).astype('uint8'))
+        cv2.imshow('Canny Eroded', edgede.astype('float32'))
+        cv2.waitKey(0)
 
     lines_im = phmask.copy()
     # LINE DETECTION
@@ -195,13 +127,17 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
     label_this = edgede*lines_im
 
-    cv2.imshow('After line removal', label_this.astype('float32'))
-    cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}lineremoval1_slice_{1}.png".format(imagepath, zz + 1), (label_this*255).astype('uint8'))
+        cv2.imshow('After line removal', label_this.astype('float32'))
+        cv2.waitKey(0)
 
     label_this = opening(label_this)
 
-    cv2.imshow('After opening', label_this.astype('float32'))
-    cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}opening1_slice_{1}.png".format(imagepath, zz + 1), (label_this*255).astype('uint8'))
+        cv2.imshow('After opening', label_this.astype('float32'))
+        cv2.waitKey(0)
 
     label_img, num = label(label_this, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
     print('Number of regions detected (should be 6!!!) = ', num)
@@ -227,8 +163,10 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
         label_this3 = label_this2 * lines_im2
 
-        cv2.imshow('After 2nd line removal', label_this3.astype('float32'))
-        cv2.waitKey(0)
+        if show_graphical:
+            cv2.imwrite("{0}lineremoval2_slice_{1}.png".format(imagepath, zz + 1), (label_this3*255).astype('uint8'))
+            cv2.imshow('After 2nd line removal', label_this3.astype('float32'))
+            cv2.waitKey(0)
 
         label_img2, num2 = label(label_this3, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
         print('Number of regions detected (should be 6!!!) = ', num2)
@@ -240,12 +178,10 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
         num = num2
         label_img = label_img2  # replace label_img with new version with less labelled regions
 
-    cv2.imshow('Rods labelled', label_img.astype('float32'))
-    cv2.waitKey(0)
-
-    plt.figure()
-    plt.imshow(label_img)
-    plt.show()
+    if show_graphical:
+        cv2.imwrite("{0}labelled_rods_slice_{1}.png".format(imagepath, zz + 1), (label_img*255).astype('uint8'))
+        cv2.imshow('Rods labelled', label_img.astype('float32'))
+        cv2.waitKey(0)
 
     props = regionprops(label_img)  # returns region properties for labelled image
     cent = np.zeros([num, 2])
@@ -263,8 +199,10 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
         # draw the center of the circle
         cv2.circle(marker_im, (i[1], i[0]), 1, (0, 0, 255), 1)
 
-    cv2.imshow('marker image', marker_im.astype('uint8'))
-    cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}marker_image_slice_{1}.png".format(imagepath, zz + 1), marker_im.astype('uint8'))
+        cv2.imshow('marker image', marker_im.astype('uint8'))
+        cv2.waitKey(0)
 
     """START MEASURING HERE"""
 
@@ -364,6 +302,7 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     final_markers = cv2.vconcat((hmarker_im.astype('uint8'), vmarker_im.astype('uint8')))
 
     if show_meas:
+        cv2.imwrite("{0}final_measures_slice_{1}.png".format(imagepath, zz + 1), final_markers)
         cv2.imshow("Measurements", final_markers)
         cv2.waitKey(0)
 
@@ -380,7 +319,7 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
 
     distance_of_angled_rods = hdist2  # distance between angled rods
 
-    # TODO: remove brute force method with something more sophisticated and robust...
+    # detect middle slice where rods are vertically in line - where plus and minus switch in calculation
     if 7.5 < distance_of_angled_rods < 8.5:  # tolerance of +/- 0.5 mm
         switch_sign = True
         print('THE SIGN IS SWITCHED!!!!')
@@ -397,6 +336,8 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     if idx == 0:
         first_slice_position = slice_position_measured
         # first calculated slice position = first measured slice position
+    else:
+        first_slice_position = first_slice_position
 
     slice_position = idx+1  # slice number
 
@@ -405,81 +346,86 @@ for zz in np.linspace(7, 35, 29):  # TODO: change to range(no_slices):
     slice_position_error = slice_position_calculated - slice_position_measured
 
     img_array.append(final_markers)  # for making video
-    vid_dims = final_markers.shape
+    vid_dims = final_markers.shape  # for making video
+    # for plotting
     distance.append(hdist2)
     pos_m.append(slice_position_measured)
     pos_c.append(slice_position_calculated)
     error.append(slice_position_error)
 
-    idx = idx + 1
+    idx = idx + 1  # index for next slice
+
+slices_vec = np.linspace(start_slice+1, last_slice+1, idx)
 
 plt.figure()
 plt.subplot(131)
-plt.plot(np.linspace(8, 36, 29), distance)
+plt.plot(slices_vec, distance)
+plt.xlim([1, no_slices])
 plt.title('Slice Number vs. Distance')
 plt.subplot(132)
-plt.plot(np.linspace(8, 36, 29), pos_m)
-plt.plot(np.linspace(8, 36, 29), pos_c)
+plt.plot(slices_vec, pos_m)
+plt.plot(slices_vec, pos_c)
+plt.xlim([1, no_slices])
 plt.legend(['Measured', 'Calculated'])
 plt.title('Slice Number vs. Position')
 plt.subplot(133)
-plt.plot(np.linspace(8, 36, 29), error)
-plt.plot(np.linspace(8, 36, 29), np.repeat(-2, 29), 'r')
-plt.plot(np.linspace(8, 36, 29), np.repeat(2, 29), 'r')
+plt.plot(slices_vec, error)
+plt.plot(slices_vec, np.repeat(-2, idx), 'r')
+plt.plot(slices_vec, np.repeat(2, idx), 'r')
+plt.xlim([1, no_slices])
 plt.title('Slice Number vs. Slice Position Error')
 plt.show()
 
-# create video
 if make_video:
-    print('making video ! ... ')
-    out = cv2.VideoWriter('SlicePos.avi', cv2.VideoWriter_fourcc(*"MJPG"), 2, (vid_dims[1], vid_dims[0]))
-
-    for i in range(len(img_array)):
-        print('Frame', i+1, '/', len(img_array))
-        print(np.shape(img_array[i]))
-        out.write(img_array[i])
-    out.release()
+    # create video of pass/fail assignment
+    spf.make_video_from_img_array(pf_img_array, (phim_dims[1], phim_dims[0]), 'SlicePos_findrange.mp4')
+    # create video of measurements
+    spf.make_video_from_img_array(img_array, (vid_dims[1], vid_dims[0]), 'SlicePos.mp4')
 
 # Comparison with MagNET Report
-df = pd.read_excel(r'Sola_INS_07_05_19.xls', sheet_name='Slice Position Sola')
+df = pd.read_excel(r'Sola_INS_07_05_19.xls', sheet_name='Slice Position Sola (2)')
 
-sola_distance = df.Position  # slice 7 -> 36 (I have analysed slice 8 to 36)
-sola_distance = sola_distance[1:31]
+sola_distance = df.Position  # slice 7 -> 36 (I analyse slice 8 to 36)
+sola_distance = sola_distance[1:30]
 
 sola_pos_m = df['Unnamed: 5']
-sola_pos_m = sola_pos_m[1:31]
+sola_pos_m = sola_pos_m[1:30]
 
 sola_pos_c = df['Unnamed: 6']
-sola_pos_c = sola_pos_c[1:31]
+sola_pos_c = sola_pos_c[1:30]
 
 sola_error = df['Unnamed: 7']
-sola_error = sola_error[1:31]
+sola_error = sola_error[1:30]
 
 plt.figure()
 plt.subplot(221)
-plt.plot(np.linspace(8, 36, 29), distance)
-plt.plot(np.linspace(7, 36, 30), sola_distance)
+plt.plot(slices_vec, distance)
+plt.plot(slices_vec, sola_distance)
+plt.xlim([1, no_slices])
 plt.legend(['Python', 'Macro'])
 plt.title('Measured Rod Distance')
 
 plt.subplot(222)
-plt.plot(np.linspace(8, 36, 29), pos_m)
-plt.plot(np.linspace(7, 36, 30), sola_pos_m)
+plt.plot(slices_vec, pos_m)
+plt.plot(slices_vec, sola_pos_m)
+plt.xlim([1, no_slices])
 plt.legend(['Python', 'Macro'])
 plt.title('Measured Position')
 
 plt.subplot(223)
-plt.plot(np.linspace(8, 36, 29), pos_c)
-plt.plot(np.linspace(7, 36, 30), sola_pos_c)
+plt.plot(slices_vec, pos_c)
+plt.plot(slices_vec, sola_pos_c)
+plt.xlim([1, no_slices])
 plt.legend(['Python', 'Macro'])
 plt.title('Calculated Position')
 
 plt.subplot(224)
-plt.plot(np.linspace(8, 36, 29), error)
-plt.plot(np.linspace(7, 36, 30), sola_error)
-plt.plot(np.linspace(7, 36, 30), np.repeat(-2, 30), 'r')
-plt.plot(np.linspace(7, 36, 30), np.repeat(2, 30), 'r')
-plt.plot(np.linspace(7, 36, 30), np.repeat(0, 30), 'r--')
+plt.plot(slices_vec, error)
+plt.plot(slices_vec, sola_error)
+plt.plot(slices_vec, np.repeat(-2, len(slices_vec)), 'r')
+plt.plot(slices_vec, np.repeat(2, len(slices_vec)), 'r')
+plt.plot(slices_vec, np.repeat(0, len(slices_vec)), 'r--')
+plt.xlim([1, no_slices])
 plt.legend(['Python', 'Macro', 'Pass/Fail Region'], loc='upper right', bbox_to_anchor=(1, 0.9), fontsize='x-small')
 plt.title('Position Error')
 plt.show()

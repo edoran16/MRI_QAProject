@@ -115,24 +115,162 @@ def find_centre_and_area_of_phantom(phmask, plotflag=False):
     return cent, pharea
 
 
-if __name__ == '__main__':
+def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=False):
+    # detect slice range for analysis
+    if savepng:
+        imagepath = "MagNET_acceptance_test_data/Slice_Position_Images/"
 
-    from DICOM_test import dicom_read_and_write
-    import os
+    pf_img_array = []  # array of pass/fail images to be used to create video for example...
+    pass_fail = []
+    for aa in range(no_slices):
+        aa = int(aa)
+        phmask = mask3D[aa, :, :]  # phantom mask
+        phim = imdata[aa, :, :] * phmask  # phantom image
 
-    directpath = "MagNET_acceptance_test_data/scans/"
-    folder = "42-SLICE_POS"
+        ph_centre, pharea = find_centre_and_area_of_phantom(phmask, plotflag=False)
 
-    pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
+        if pharea > 30000:
+            # this slice contains phantom area greater than expected. Likely to be noise. Eliminate for analysis range.
+            pass_fail.append(0)
 
-    with os.scandir(pathtodicom) as it:
-        for file in it:
-            path = "{0}{1}".format(pathtodicom, file.name)
+            phim_norm = phim / np.max(phim)  # normalised image
+            phim_gray = phim_norm * 255  # greyscale image
 
-    ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
-    mat_sz, st, pixels_space = slice_pos_meta(ds)
+            marker_im = phim_gray.copy()
+            marker_im = marker_im.astype('uint8')
+            marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
 
-    print('Matrix size = ', mat_sz[0], 'x', mat_sz[1])
-    print('Slice thickness = ', st, 'mm')
-    print('Pixel Dimensions = ', pixels_space, 'mm^2')
+            cv2.putText(marker_im, 'FAIL', (15, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            pf_img_array.append(marker_im)
+
+            if plotflag:
+                cv2.imshow('marker image', marker_im.astype('uint8'))
+                cv2.waitKey(0)
+            if savepng:
+                cv2.imwrite("{0}pass_fail_slice_{1}.png".format(imagepath, aa + 1), marker_im.astype('uint8'))
+        else:
+            # THICK RECTANGULAR LINE DETECTION
+            phim_norm = phim / np.max(phim)  # normalised image
+            phim_gray = phim_norm * 255  # greyscale image
+
+            ret, th = cv2.threshold(phim_gray.astype('uint8'), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            th2 = 255 - th
+            bigphmask = cv2.erode(phmask.astype('uint8'), None, iterations=3)  # erode phantom mask to elimate edge effect
+            bigphmask2 = bigphmask * 255
+            th3 = th2 * (phmask * bigphmask2)
+
+            label_img, num = label(th3, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
+
+            props = regionprops(label_img)  # returns region properties for labelled image
+
+            marker_im = phim_gray.copy()
+            marker_im = marker_im.astype('uint8')
+            marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
+            rcntr = 0  # counter for counting rectangle. Needs to be 1 for slice to PASS
+            scntr = 0  # counter for counting 2  squares. If scntr > 0 then slice eliminated
+            escntr = 0  # counter for counting edges (inferior/superior) of 2 squares. If escntr > 0 slice eliminated
+            for xx in range(num):
+                centtemp = props[xx].centroid
+                areatemp = props[xx].area
+                # print(areatemp)
+                # conditions for bottom long rectangular shape detection
+                if 600 < areatemp < 800:  # TODO: replace with centre of ph coords
+                    if centtemp[0] > 170:  # row below (but greater than since -y axis) 170 = bottom region of phantom
+                        if 100 < centtemp[1] < 150:  # col in this range is central region of phantom
+                            print('rectangular region detected!')
+                            rcntr = rcntr + 1
+                            bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
+                            min_row, min_col, max_row, max_col = bboxx
+                            # draw the bounding box
+                            cv2.line(marker_im, (min_col, min_row), (max_col, min_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (max_col, min_row), (max_col, max_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
+
+                # conditions for L and R square shape detection
+                if 100 < areatemp < 160:
+                    if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
+                        if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
+                            print('square region detected!')
+                            scntr = scntr + 1
+                            bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
+                            min_row, min_col, max_row, max_col = bboxx
+                            # draw the bounding box
+                            cv2.line(marker_im, (min_col, min_row), (max_col, min_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (max_col, min_row), (max_col, max_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
+
+                # conditions for edge L and R "square" shape detection
+                if 40 < areatemp < 50:
+                    if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
+                        if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
+                            print('inferior/superior square region detected!')
+                            escntr = escntr + 1
+                            bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
+                            min_row, min_col, max_row, max_col = bboxx
+                            # draw the bounding box
+                            cv2.line(marker_im, (min_col, min_row), (max_col, min_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (max_col, min_row), (max_col, max_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
+                            cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
+
+            if rcntr == 1 and scntr == 0 and escntr == 0:
+                pass_fail.append(1)  # analyse this slice as rectangular region detected only. NO side square regions
+                cv2.putText(marker_im, 'PASS', (15, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            else:
+                pass_fail.append(
+                    0)  # eliminate this slice as there is no rectangle OR two side squares have been detected
+                cv2.putText(marker_im, 'FAIL', (15, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+            pf_img_array.append(marker_im)
+
+            if plotflag:
+                cv2.imshow('marker image', marker_im.astype('uint8'))
+                cv2.waitKey(0)
+            if savepng:
+                cv2.imwrite("{0}pass_fail_slice_{1}.png".format(imagepath, aa + 1), marker_im.astype('uint8'))
+
+    passes = np.where(pass_fail)  # passes + 1 = actual slice number
+    start_slice = np.min(passes)
+    last_slice = np.max(passes)
+    print('Slice position analysis on slices', start_slice + 1, 'to', last_slice + 1)
+
+    return start_slice, last_slice, pf_img_array
+
+
+def make_video_from_img_array(img_array, dims, VideoName):
+    # VideoName must end in .avi
+    # dims is a tuple
+    # saves avi to current folder
+    print('making video ! ... ')
+    # out = cv2.VideoWriter(VideoName, cv2.VideoWriter_fourcc(*"MJPG"), 2, dims)
+    out = cv2.VideoWriter(VideoName, cv2.VideoWriter_fourcc(*"MP4V"), 2, dims)
+    for i in range(len(img_array)):
+        print('Frame', i + 1, '/', len(img_array))
+        out.write(img_array[i])
+    out.release()
+    return
+
+
+#if __name__ == '__main__':
+
+    # from DICOM_test import dicom_read_and_write
+    # import os
+    #
+    # directpath = "MagNET_acceptance_test_data/scans/"
+    # folder = "42-SLICE_POS"
+    #
+    # pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
+    #
+    # with os.scandir(pathtodicom) as it:
+    #     for file in it:
+    #         path = "{0}{1}".format(pathtodicom, file.name)
+    #
+    # ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
+    # mat_sz, st, pixels_space = slice_pos_meta(ds)
+    #
+    # print('Matrix size = ', mat_sz[0], 'x', mat_sz[1])
+    # print('Slice thickness = ', st, 'mm')
+    # print('Pixel Dimensions = ', pixels_space, 'mm^2')
 
