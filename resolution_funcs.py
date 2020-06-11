@@ -39,7 +39,7 @@ def create_2D_mask(img):
 
 
 # https://scipy-cookbook.readthedocs.io/items/SignalSmooth.html
-def smooth(x, window_len=11, window='hanning'):
+def smooth(x, window_len=5, window='hanning'):
     """smooth the data using a window with requested size.
 
     This method is based on the convolution of a scaled window with the signal.

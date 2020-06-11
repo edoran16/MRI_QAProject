@@ -9,6 +9,10 @@ import cv2
 def midpoint(ptA, ptB):
     return (ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5
 
+# bit of code
+#  if hasattr(self.RefDs, 'PixelSpacing'):  # check attribute exists
+# if hasattr(slice_id, 'RescaleSlope'):  # then save it
+                # rescaleSlope = ds.RescaleSlope
 
 def slice_pos_meta(dicomfile):
     """ extract metadata for slice postion info calculations
