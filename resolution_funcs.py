@@ -29,7 +29,22 @@ def create_2D_mask(img):
     new = (w1 * img) + (w2 * h)  # weighted combination of original image and hist eq version
     ots[(new > filters.threshold_otsu(new)) == True] = 255  # Otsu threshold on weighted combination
 
-    openhull = opening(ots)
+    # cv2.imshow('ots', ots)
+    # cv2.waitKey(0)
+
+    eroded_ots = cv2.erode(ots, None, iterations=3)
+    dilated_ots = cv2.dilate(eroded_ots, None, iterations=3)
+    #
+    # cv2.imshow('dilated', dilated_ots)
+    # cv2.waitKey(0)
+
+    # TODO: improve masking!!!! for SAG AND TRA
+
+    openhull = opening(dilated_ots)
+
+    # cv2.imshow('openhull', openhull)
+    # cv2.waitKey(0)
+
     conv_hull = convex_hull_image(openhull)
 
     ch = np.multiply(conv_hull, 1)  # bool --> binary
@@ -127,3 +142,37 @@ def smooth_demo():
     plt.title("Smoothing a noisy signal")
     plt.show()
 
+
+def resolution_meta(dicomfile):
+    """ extract metadata for slice postion info calculations
+    dicomfile = pydicom.dataset.FileDataset"""
+
+    # rows and columns
+    rows = dicomfile[0x0028, 0x0010]
+    rows = rows.value
+    cols = dicomfile[0x0028, 0x0011]
+    cols = cols.value
+    matrix_size = [rows, cols]
+
+    # TODO: FoV and Private Tag Data Access
+    # shared_func_groups_seq = dicomfile[0x5200, 0x9229]
+    # shared_func_groups_seq = shared_func_groups_seq.value
+    # for xx in shared_func_groups_seq:
+    #     PrivateTagData = xx[0x002110fe]
+    #
+    # PrivateTagData = PrivateTagData[0]
+    # for yy in PrivateTagData:
+    #     #print(yy.value)
+    #     print(yy.value)
+
+    # per-frame functional group sequence
+    elem = dicomfile[0x5200, 0x9230]  # pydicom.dataelem.DataElement
+    seq = elem.value  # pydicom.sequence.Sequence
+    elem3 = seq[0]  # first frame
+    elem4 = elem3.PixelMeasuresSequence  # pydicom.sequence.Sequence
+
+    for xx in elem4:
+        st = xx.SliceThickness
+        pixels_space = xx.PixelSpacing
+
+    return matrix_size, st, pixels_space
