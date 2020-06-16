@@ -14,6 +14,7 @@ def midpoint(ptA, ptB):
 # if hasattr(slice_id, 'RescaleSlope'):  # then save it
                 # rescaleSlope = ds.RescaleSlope
 
+
 def slice_pos_meta(dicomfile):
     """ extract metadata for slice postion info calculations
     dicomfile = pydicom.dataset.FileDataset"""

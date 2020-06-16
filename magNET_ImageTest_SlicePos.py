@@ -7,6 +7,7 @@ import os
 import sys
 import cv2
 import pandas as pd
+from skimage import filters
 
 from DICOM_test import dicom_read_and_write
 from scipy.spatial import distance as dist
@@ -49,14 +50,16 @@ switch_sign = False  # INITIALLY FALSE: for switching plus/minus sign in equatio
 show_meas = False  # for showing measurements made on each slice iteration
 # for video
 img_array = []
-make_video = True  # produce 2 videos
+make_video = False  # produce 2 videos
 # for calculations
 first_slice_position = []
 
 # detect slice range for analysis
-start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=True, savepng=True)
+start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=False)
 
-show_graphical = True
+show_graphical = True  # display pre-processing steps
+show_graphical2 = True  # replacing erosion/dilation method with otsu threshold
+otsu_method = True  # use otsu method for image pre-processing
 
 for zz in range(start_slice, last_slice+1):
     print(zz)
@@ -106,17 +109,33 @@ for zz in range(start_slice, last_slice+1):
 
     edgede = cv2.erode(edgedd, None, iterations=1)
 
-    if show_graphical:
+    if show_graphical2:
         cv2.imwrite("{0}erosion1_slice_{1}.png".format(imagepath, zz + 1), (edgede*255).astype('uint8'))
         cv2.imshow('Canny Eroded', edgede.astype('float32'))
         cv2.waitKey(0)
+
+    # TODO: OTSO COMPARISON
+    ots = np.zeros_like(phim_gray, dtype=np.uint16)  # creates zero array same dimensions as img
+    ots[(phim_gray > filters.threshold_otsu(phim_gray)) == True] = 1  # Otsu threshold on image
+
+    if show_graphical2:
+        cv2.imwrite("{0}otsuthresh_slice_{1}.png".format(imagepath, zz + 1), (ots*255).astype('uint8'))
+        cv2.imshow('INVERSE OTS FOR COMP', ((1 - ots)*~bigbg).astype('float32'))
+        cv2.waitKey(0)
+
+    if otsu_method:
+        remove_lines = (((1 - ots)*~bigbg)/np.max((1 - ots)*~bigbg)).astype('uint8')  # otsu threshold method
+        # print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
+    else:
+        remove_lines = edgede  # edge/dilation method
+        print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
 
     lines_im = phmask.copy()
     # LINE DETECTION
     minLineLength = 10
     maxLineGap = 10
     theta = np.pi/2  # 90 degrees to detect horizontal lines
-    lines = cv2.HoughLinesP(edgede, 1, theta, 5, minLineLength, maxLineGap)
+    lines = cv2.HoughLinesP(remove_lines, 1, theta, 5, minLineLength, maxLineGap)
 
     no_lines = lines.shape
     no_lines = no_lines[0]
@@ -125,19 +144,20 @@ for zz in range(start_slice, last_slice+1):
         for x1, y1, x2, y2 in lines[lineno]:
             cv2.line(lines_im, (x1, y1), (x2, y2), 0, 2)
 
-    label_this = edgede*lines_im
+    label_this = remove_lines*lines_im
 
     if show_graphical:
         cv2.imwrite("{0}lineremoval1_slice_{1}.png".format(imagepath, zz + 1), (label_this*255).astype('uint8'))
         cv2.imshow('After line removal', label_this.astype('float32'))
         cv2.waitKey(0)
 
-    label_this = opening(label_this)
+    if not otsu_method:
+        label_this = opening(label_this)
 
-    if show_graphical:
-        cv2.imwrite("{0}opening1_slice_{1}.png".format(imagepath, zz + 1), (label_this*255).astype('uint8'))
-        cv2.imshow('After opening', label_this.astype('float32'))
-        cv2.waitKey(0)
+        if show_graphical:
+            cv2.imwrite("{0}opening1_slice_{1}.png".format(imagepath, zz + 1), (label_this*255).astype('uint8'))
+            cv2.imshow('After opening', label_this.astype('float32'))
+            cv2.waitKey(0)
 
     label_img, num = label(label_this, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
     print('Number of regions detected (should be 6!!!) = ', num)
@@ -172,7 +192,7 @@ for zz in range(start_slice, last_slice+1):
         print('Number of regions detected (should be 6!!!) = ', num2)
 
         if num2 > 6:
-            print('Still too many regions detected! =(')
+            ValueError('Too many regions detected! =(')
 
         label_this = label_this3
         num = num2
@@ -317,10 +337,16 @@ for zz in range(start_slice, last_slice+1):
     CFall = np.divide(RDA, RDM)
     CF = np.mean(CFall)  # average of 4 measurements
 
-    distance_of_angled_rods = hdist2  # distance between angled rods
+    print(pixeldims)
+    if pixeldims[0] == pixeldims[1]:
+        pixeldim = pixeldims[0]
+    else:
+        ValueError('NEED TO ACCOUNT FOR ANISOTROPIC VOXELS')
+
+    distance_of_angled_rods = hdist2/pixeldim  # distance between angled rods
 
     # detect middle slice where rods are vertically in line - where plus and minus switch in calculation
-    if 7.5 < distance_of_angled_rods < 8.5:  # tolerance of +/- 0.5 mm
+    if 4.5 < distance_of_angled_rods < 8.5:  # should be 6.5 mm with tolerance of +/- 2 mm
         switch_sign = True
         print('THE SIGN IS SWITCHED!!!!')
 
@@ -375,6 +401,16 @@ plt.plot(slices_vec, np.repeat(2, idx), 'r')
 plt.xlim([1, no_slices])
 plt.title('Slice Number vs. Slice Position Error')
 plt.show()
+
+# mean error
+mean_error = np.mean(error)
+print('The mean slice position error = ', mean_error.round(2))  # -0.73
+# standard deviation error
+stdev_error = np.std(error)
+print('The standard deviation of the error = ', stdev_error.round(2))  # 0.31
+# range of error
+range_error = np.max(error) - np.min(error)  # 1.52 range from -1.01 to 0.51
+print('The range of the slice position error is = ', range_error.round(2), 'ranging from', (np.min(error)).round(2), 'to', (np.max(error)).round(2))
 
 if make_video:
     # create video of pass/fail assignment
