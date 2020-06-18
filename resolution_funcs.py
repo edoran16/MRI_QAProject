@@ -38,8 +38,6 @@ def create_2D_mask(img):
     # cv2.imshow('dilated', dilated_ots)
     # cv2.waitKey(0)
 
-    # TODO: improve masking!!!! for SAG AND TRA
-
     openhull = opening(dilated_ots)
 
     # cv2.imshow('openhull', openhull)
@@ -154,17 +152,6 @@ def resolution_meta(dicomfile):
     cols = cols.value
     matrix_size = [rows, cols]
 
-    # TODO: FoV and Private Tag Data Access
-    # shared_func_groups_seq = dicomfile[0x5200, 0x9229]
-    # shared_func_groups_seq = shared_func_groups_seq.value
-    # for xx in shared_func_groups_seq:
-    #     PrivateTagData = xx[0x002110fe]
-    #
-    # PrivateTagData = PrivateTagData[0]
-    # for yy in PrivateTagData:
-    #     #print(yy.value)
-    #     print(yy.value)
-
     # per-frame functional group sequence
     elem = dicomfile[0x5200, 0x9230]  # pydicom.dataelem.DataElement
     seq = elem.value  # pydicom.sequence.Sequence
@@ -172,7 +159,6 @@ def resolution_meta(dicomfile):
     elem4 = elem3.PixelMeasuresSequence  # pydicom.sequence.Sequence
 
     for xx in elem4:
-        st = xx.SliceThickness
         pixels_space = xx.PixelSpacing
 
-    return matrix_size, st, pixels_space
+    return matrix_size, pixels_space

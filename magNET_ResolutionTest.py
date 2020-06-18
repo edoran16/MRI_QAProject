@@ -6,22 +6,23 @@ import numpy as np
 import os
 import sys
 import cv2
-import pandas as pd
 import re
-import scipy
-from scipy import fft, ifft, interpolate, ndimage
+import pandas as pd
 
+from scipy.signal import find_peaks, argrelmin
 from DICOM_test import dicom_read_and_write
 from skimage import filters
 from scipy.spatial import distance as dist
 from skimage.measure import profile_line, label, regionprops
 from nibabel.viewers import OrthoSlicer3D  # << actually do use this!!
-from skimage.morphology import opening
 
 directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/Resolution_Images/"
 
 show_graphical = False
+show_working_plots = False
+show_final_plots = True
+show_macro_comp = True
 
 matrix_sizes = ['256', '512']
 geos = ['_TRA_', '_SAG_', '_COR_']
@@ -33,7 +34,7 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             for folder in the_folders:
                 fname = folder.name
                 if re.search('-RES_', fname):
-                    # TODO: iterate between [256, 512] versions of ['COR', 'SAG', 'TRA'] and repeat analysis
+                    # iterate between [256, 512] versions of ['COR', 'SAG', 'TRA'] and repeat analysis
                     if re.search(matrix_sizes[ms], fname):
                         if re.search(geos[gs], fname):
                             print('Loading matrix size:', matrix_sizes[ms], 'acquired in', geos[gs], 'geometry...')
@@ -50,7 +51,10 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             xdim, ydim = dims
             print('Matrix Size =', xdim, 'x', ydim)
 
-            # TODO: load dicom metadata here
+            """ if 256x256 data - only interested in resolving thicker 
+            bars, for 512x512 data want to be able to resolve all bars"""
+            matrix_dims, pixel_dims = rf.resolution_meta(ds)
+            # TODO: use pixel_dims as part of output for report
 
             img = ((imdata / np.max(imdata)) * 255).astype('uint8')  # grayscale
 
@@ -72,11 +76,6 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
 
         phim = img * bin_mask  # phantom masked image
         bgim = img * (1 - bin_mask)  # background image
-
-        # cv2.imshow('phantom masked', phim)
-        # cv2.waitKey(0)
-        # cv2.imshow('background masked', bgim)
-        # cv2.waitKey(0)
 
         # otsu threshold
         ots = np.zeros_like(phim, dtype=np.uint8)
@@ -110,7 +109,6 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
 
         # label this
         label_img, num = label(label_this, connectivity=ots.ndim, return_num=True)  # labels the mask
-        # print('Number of regions detected = ', num)
 
         if show_graphical:
             plt.figure()
@@ -137,7 +135,7 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
         cent = cent.astype(int)
         idx = np.where(areas == np.max(areas))
         idx = int(idx[0])
-        # print('Label number to discard = ', idx + 1)
+
         label_idxs_all = np.arange(1, num + 1)  # list of label numbers - including central section
         label_idxs_where = np.where(label_idxs_all != idx + 1)  # labels to be kept
         label_idxs = label_idxs_all[label_idxs_where]  # identify labels to be kept
@@ -146,6 +144,14 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
         CRFs = []  # contrast response functions
         HV = []  # store horizontal or vertical line label
         bar_minor_axes = []  # store minor axes to determine which sections are 0.5 or 1 mm parallel bars
+
+        # store variables for report output at end of script
+        outputs_all = []
+        base_signals_all = []
+        signal50s_all = []
+        min_signals_all = []
+        pass_or_fail = []
+
         for ii in label_idxs:
             block_im = np.zeros(np.shape(label_img))
             block_im[label_img == ii] = 255
@@ -153,8 +159,6 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             if show_graphical:
                 cv2.imshow('Central Block', block_im.astype('uint8'))
                 cv2.waitKey(0)
-                # print('Major axis length = ', mxAL[ii - 1, :])
-                # print('Minor axis length = ', mnAL[ii - 1, :])
 
             elements = np.where(block_im == 255)  # [y, x], [rows, cols]
 
@@ -180,28 +184,27 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             cv2.line(marker_im, (max_col, max_row), (min_col, max_row), (0, 0, 255), 1)
             cv2.line(marker_im, (min_col, max_row), (min_col, min_row), (0, 0, 255), 1)
 
-            # major and minor axes
             dist1 = dist.euclidean((half_col, max_row), (half_col, min_row))  # vertical distance
             dist2 = dist.euclidean((min_col, half_row), (max_col, half_row))  # horizontal distance
 
-            case1 = False
-            case2 = False
+            case1 = False  # VERTICAL BARS
+            case2 = False  # HORIZONTAL BARS
 
-            if dist1 < dist2:  # vertical line is minor axis
+            if dist1 < dist2:  # vertical line is minor axis, bars are horizontal
                 case1 = True
-                HV.append('V')
-                # print('Phase encoding direction.')  # TODO: check this is the case?
-            if dist1 > dist2:  # horizontal line is minor axis
-                case2 = True
                 HV.append('H')
+                # print('Phase encoding direction.')  # TODO: check this is the case?
+            if dist1 > dist2:  # horizontal line is minor axis, bars are vertical
+                case2 = True
+                HV.append('V')
                 # print('Frequency encoding direction.')
             if case1 is False and case2 is False:
                 ValueError
 
             xtrabit = 10  # amount the line is extended over edge to get sense of baseline values
 
-            if case1:
-                # print('CASE1')
+            if case1:  # horizontal parallel bars
+                print('HORIZONTAL PARALLEL BARS')
                 cv2.line(marker_im, (half_col, max_row + xtrabit), (half_col, min_row - xtrabit), (255, 0, 0),
                          1)  # draw vertical line
                 src = (half_col, max_row + xtrabit)
@@ -209,24 +212,22 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
 
                 bar_minor_axes.append(mnAL[ii - 1, :])  # minor axes of labelled section
 
-            if case2:
-                # print('CASE2')
+            if case2:  # vertical parallel bars
+                print('VERTICAL PARALLEL BARS')
                 src = (min_col - xtrabit, half_row)
                 dst = (max_col + xtrabit, half_row)
                 cv2.line(marker_im, (min_col - xtrabit, half_row), (max_col + xtrabit, half_row), (255, 0, 0),
-                         1)  # horizontal line
+                         1)  # draw horizontal line
 
                 bar_minor_axes.append(mnAL[ii - 1, :])  # minor axes of labelled section
 
+            cv2.imwrite("{0}marker_image{1}{2}.png".format(imagepath, matrix_sizes[ms], geos[gs]),
+                        marker_im.astype('uint8'))
             if show_graphical:
-                # cv2.imwrite("{0}marker_image.png".format(imagepath), marker_im.astype('uint8'))
                 cv2.imshow('marker image', marker_im.astype('uint8'))
                 cv2.waitKey(0)
 
             """DRAW LINE PROFILE ACROSS PARALLEL BARS"""
-            # print('Source = ', src)
-            # print('Destination = ', dst)
-
             linewidth = 1  # width of the line (mean taken over width)
 
             # display profile line on phantom: from source code of profile_line function
@@ -236,14 +237,14 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             theta = np.arctan2(d_row, d_col)
 
             length = int(np.ceil(np.hypot(d_row, d_col) + 1))
-            # add one above to include the last point in the profile
-            # (in contrast to standard numpy indexing)
+            """ add one above to include the last point in the profile
+            (in contrast to standard numpy indexing) """
             line_col = np.linspace(src_col, dst_col, length)
             line_row = np.linspace(src_row, dst_row, length)
 
-            # subtract 1 from linewidth to change from pixel-counting
-            # (make this line 3 pixels wide) to point distances (the
-            # distance between pixel centers)
+            """ subtract 1 from linewidth to change from pixel-counting
+            (make this line 3 pixels wide) to point distances (the
+            distance between pixel centers) """
             col_width = (linewidth - 1) * np.sin(-theta) / 2
             row_width = (linewidth - 1) * np.cos(theta) / 2
             perp_rows = np.array([np.linspace(row_i - row_width, row_i + row_width, linewidth) for row_i in line_row])
@@ -253,11 +254,12 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             improfile[np.array(np.round(perp_rows), dtype=int), np.array(np.round(perp_cols), dtype=int)] = 255
 
             # plot sampled line on phantom to visualise where output comes from
-            # plt.figure()
-            # plt.imshow(improfile)
-            # plt.colorbar()
-            # plt.axis('off')
-            # plt.show()
+            if show_graphical:
+                plt.figure()
+                plt.imshow(improfile)
+                plt.colorbar()
+                plt.axis('off')
+                plt.show()
 
             # voxel values along specified line. specify row then column (y then x)
             output = profile_line(img, (src[1], src[0]), (dst[1], dst[0]))  # signal profile
@@ -267,81 +269,75 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             min_signal = np.repeat(np.min(output), len(output))
             signal50 = min_signal + ((base_signal - min_signal) / 2)
 
-            # TODO: evaluate if pass/fail
-            # print(output)
+            # append variables for report output at end of script
+            outputs_all.append(output)
+            base_signals_all.append(base_signal)
+            signal50s_all.append(signal50)
+            min_signals_all.append(min_signal)
+
             analysis_region = output[xtrabit-1:-(xtrabit-1)]  # skip out the two baseline regions
-            # print(analysis_region)
-            import matplotlib.pyplot as plt
-            from scipy.signal import find_peaks, argrelmin
-            x = analysis_region
-            above50_peaks, _ = find_peaks(x, height=signal50[0])
-            below50_peaks, _ = find_peaks(x, height=[0, signal50[0]])
-            below50_troughs = argrelmin(x)
+            above50_peaks, _ = find_peaks(analysis_region, height=signal50[0])
+            below50_peaks, _ = find_peaks(analysis_region, height=[0, signal50[0]])
+            below50_troughs = argrelmin(analysis_region)
             below50_troughs = np.asarray(below50_troughs)
             below50_troughs = below50_troughs[0, :]
 
             sb = sb + 1
 
-            plt.figure(1)
-            plt.subplot(2, 2, sb)
-            plt.plot(x)
-            plt.plot(above50_peaks, x[above50_peaks], "x")
-            plt.plot(below50_peaks, x[below50_peaks], "o")
-            plt.plot(below50_troughs, x[below50_troughs], "*")
-            plt.plot(np.repeat(signal50[0], len(x)), "--", color="gray")
-            plt.legend(['Line Profile', 'Peaks above 50%', 'Peaks below 50%', 'Troughs below 50%', '50% threshold'],
-                       fontsize='xx-small', loc='upper right')
+            if show_working_plots:
+                plt.figure(sb)
+                plt.subplot(1, 2, 1)
+                plt.plot(analysis_region)
+                plt.plot(above50_peaks, analysis_region[above50_peaks], "x")
+                plt.plot(below50_peaks, analysis_region[below50_peaks], "o")
+                plt.plot(below50_troughs, analysis_region[below50_troughs], "*")
+                plt.plot(np.repeat(signal50[0], len(analysis_region)), "--", color="gray")
+                plt.legend(['Line Profile', 'Peaks above 50%', 'Peaks below 50%', 'Troughs below 50%', '50% threshold'],
+                        fontsize='xx-small', loc='upper right')
 
             above50 = np.sum((above50_peaks > 0).astype('uint8'))  # values above the 50% threshold
             below50p = np.sum((below50_peaks > 0).astype('uint8'))  # values below the 50% threshold
             below50t = np.sum((below50_troughs > 0).astype('uint8'))
 
-            # clear # TODO: change this into case functions
+            # ASSIGNING PASS OR FAIL DEPENDING ON DETECTED PEAKS AND LOCATION OF THOSE PEAKS
             s = 0
             if np.sum(below50t) == 4 and np.sum(above50) >= 3:
                 s = 'THIS IS A CLEAR PASS'
-            if np.sum(above50) == 0:  # everything below 50% threshold level
+            if np.sum(above50) == 0:
+                # everything below 50% threshold level
                 s = 'THIS IS A CLEAR FAIL'
-            if 1 <= np.sum(below50p) < 4 and 1 <= np.sum(above50) < 4:
-            # between 1 and 3 peaks below 50%, and between 1 and 3 peaks above 50%
+            if 1 <= np.sum(below50p) < 3 and 1 <= np.sum(above50) < 3:
+                # between 1 and 2 peaks below 50%, and between 1 and 2 peaks above 50%
                 s = 'THIS IS A BORERLINE PASS'
             if s == 0:
                 s = 'OTHER CASE'
 
-            #print(above50, below50, s)
+            pass_or_fail.append(s)
 
-            # if case256:
-            # low res, thicker bars resolvable only, 1mm bars only. 7 datapoints. 1 per 1mm voxel
-            # thinner bars, 0.5 mm, 3/4 data points, 1 per voxel
-
-            # if case512:
-            # high res. thin bars. 0.5mm. 7 datapoints. 1 per 0.5 mm voxel
-            # thick bars. 1mm 14 datapoints???
             # TODO: AMPLITUDE MEASUREMENT IS TO DO WITH DIFFERENCE BETWEEN MEAN AND MAX
             mlp = np.mean(output[xtrabit:-xtrabit])  # mean of profile vals
             alp = np.max(output[xtrabit:-xtrabit]) - np.mean(output[xtrabit:-xtrabit])# amplitude of profile above mlp
-            # TODO: plot mlp and alp to check the values
             CRF = alp/mlp  # contrast response function
             CRFs.append(CRF)
 
-            plt.figure(2)
-            plt.subplot(2, 2, sb)
-            plt.plot(output)
-            plt.plot(base_signal, 'g--')
-            plt.plot(signal50, 'k--')
-            plt.plot(min_signal, 'r--')
-            # TODO: make these right! ESSENTIAL FOR CRF CALCULATION
-            # plt.plot(np.repeat(alp, len(output)))
-            # plt.plot(np.repeat(mlp, len(output)))
-            # plt.text(1, 10, s, fontsize=12)
-            plt.title(s)
-            plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal', 'alp', 'mlp'],
-                       fontsize='xx-small', loc='lower left')
+            if show_working_plots:
+                plt.figure(sb)
+                plt.subplot(1, 2, 2)
+                plt.plot(output)
+                plt.plot(base_signal, 'g--')
+                plt.plot(signal50, 'k--')
+                plt.plot(min_signal, 'r--')
+                # TODO: make these right! ESSENTIAL FOR CRF CALCULATION
+                # plt.plot(np.repeat(alp, len(output)))
+                # plt.plot(np.repeat(mlp, len(output)))
+                # plt.text(1, 10, s, fontsize=12)
+                plt.title(s)
+                plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal', 'alp', 'mlp'],
+                        fontsize='xx-small', loc='lower left')
 
         plt.show()
 
-        # TODO: confirm pixel dimensions as well as matrix size from dicom header
-        # TODO: identify 4 black line values, determine if abover or below 50% threshold.
+        """ Identification of which blocks are horizontal/vertical, 0.5 or 1 mm """
         HV_func = lambda HV, hv: [i for (y, i) in zip(hv, range(len(hv))) if HV == y]  # https://pythonspot.com/array-find/
         H_idx = HV_func('H', HV)  # these where lines in horizontal direction
         V_idx = HV_func('V', HV)  # these where lines in vertical direction
@@ -353,13 +349,60 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             VPBs.append(bar_minor_axes[V_idx[ii]])
 
         thinH = np.where(bar_minor_axes == np.min(HPBs))
+        thinH = int(thinH[0])
         thickH = np.where(bar_minor_axes == np.max(HPBs))
+        thickH = int(thickH[0])
         thinV = np.where(bar_minor_axes == np.min(VPBs))
+        thinV = int(thinV[0])
         thickV = np.where(bar_minor_axes == np.max(VPBs))
+        thickV = int(thickV[0])
 
+        """FOR REPORT OUTPUT"""
+        if show_final_plots:
+            if matrix_dims == [256, 256]:
+                plt.figure()
+                plt.subplot(121)
+                plt.plot(outputs_all[thickH])
+                plt.plot(base_signals_all[thickH], 'g--')
+                plt.plot(signal50s_all[thickH], 'k--')
+                plt.plot(min_signals_all[thickH], 'r--')
+                plt.text(0, np.max(outputs_all[thickH]) + 10, pass_or_fail[thickH], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thickH]) + 20])
+                plt.title('1 mm Parallel Bars (Horiz.)')
+                plt.subplot(122)
+                plt.plot(outputs_all[thickV])
+                plt.plot(base_signals_all[thickV], 'g--')
+                plt.plot(signal50s_all[thickV], 'k--')
+                plt.plot(min_signals_all[thickV], 'r--')
+                plt.text(0, np.max(outputs_all[thickV]) + 10, pass_or_fail[thickV], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thickV]) + 20])
+                plt.title('1 mm Parallel Bars (Vert.)')
+                plt.suptitle('256 x 256' + geos[gs] + 'RESULTS')
+                plt.show()
 
+            if matrix_dims == [512, 512]:
+                plt.figure()
+                plt.subplot(121)
+                plt.plot(outputs_all[thinH])
+                plt.plot(base_signals_all[thinH], 'g--')
+                plt.plot(signal50s_all[thinH], 'k--')
+                plt.plot(min_signals_all[thinH], 'r--')
+                plt.text(0, np.max(outputs_all[thinH]) + 10, pass_or_fail[thinH], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thinH]) + 20])
+                plt.title('0.5 mm Parallel Bars (Horiz.)')
+                plt.subplot(122)
+                plt.plot(outputs_all[thinV])
+                plt.plot(base_signals_all[thinV], 'g--')
+                plt.plot(signal50s_all[thinV], 'k--')
+                plt.plot(min_signals_all[thinV], 'r--')
+                plt.text(0, np.max(outputs_all[thinV]) + 10, pass_or_fail[thinV], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thinV]) + 20])
+                plt.title('0.5 mm Parallel Bars (Vert.)')
+                plt.suptitle('512 x 512' + geos[gs] + 'RESULTS')
+                plt.show()
 
         """CRF PLOT"""  # TODO: work on CRF output. Ideally compare to MTF.
+        print('CRF WILL GO HERE')
         # Horizontal CRF plot
         # plt.figure()
         # plt.subplot(121)
@@ -376,5 +419,126 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
         # plt.show()
         # # print(CRFs)
 
-# TODO: only plot thick bar results for 256 and thin bars for 512
-sys.exit()
+        # TODO: import results from excel sheet to compare!
+        # Comparison with MagNET Report
+        if show_macro_comp:
+            if matrix_sizes[ms] == '256':
+                if geos[gs] == '_TRA_':
+                    sheetname = 'Resolution tra 256 Sola'
+                    pfh = 'THIS IS A CLEAR PASS'
+                    pfv = 'THIS IS A CLEAR PASS'
+                if geos[gs] == '_SAG_':
+                    sheetname = 'Resolution_sag_256 Sola'
+                    pfh = 'THIS IS A CLEAR PASS'
+                    pfv = 'THIS IS A CLEAR PASS'
+                if geos[gs] == '_COR_':
+                    sheetname = 'Resolution cor 256 Sola'
+                    pfh = 'THIS IS A CLEAR PASS'
+                    pfv = 'THIS IS A CLEAR PASS'
+            if matrix_sizes[ms] == '512':
+                if geos[gs] == '_TRA_':
+                    sheetname = 'Resolution tra 512 Sola'
+                    pfh = 'THIS IS A CLEAR PASS'
+                    pfv = 'THIS IS A BORDERLINE PASS'
+                if geos[gs] == '_SAG_':
+                    sheetname = 'Resolution Sag 512 Sola'
+                    pfh = 'THIS IS A CLEAR PASS'
+                    pfv = 'THIS IS A CLEAR PASS'
+                if geos[gs] == '_COR_':
+                    sheetname = 'Resolution cor 512 Sola'
+                    pfh = 'THIS IS A CLEAR PASS'
+                    pfv = 'THIS IS A BORDERLINE PASS'
+
+            df = pd.read_excel(r'Sola_INS_07_05_19.xls', sheet_name=sheetname)
+            # print(df)
+            horiz_data = df.iloc[2:, 0:4]  # + another 3 columns
+            horiz_data = horiz_data.dropna()
+            vert_data = df.iloc[2:, 13:17]  # + another 3 columns
+            vert_data = vert_data.dropna()
+            # print(horiz_data)
+            # print(vert_data)
+
+            """FOR REPORT OUTPUT"""
+            if matrix_dims == [256, 256]:
+                print('problem here')
+                plt.figure()
+                plt.subplot(221)
+                plt.plot(outputs_all[thickH])
+                plt.plot(base_signals_all[thickH], 'g--')
+                plt.plot(signal50s_all[thickH], 'k--')
+                plt.plot(min_signals_all[thickH], 'r--')
+                plt.text(0, np.max(outputs_all[thickH]) + 10, pass_or_fail[thickH], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thickH]) + 30])
+                plt.title('AUTO 1 mm Parallel Bars (Horiz.)')
+                plt.subplot(222)
+                plt.plot(outputs_all[thickV])
+                plt.plot(base_signals_all[thickV], 'g--')
+                plt.plot(signal50s_all[thickV], 'k--')
+                plt.plot(min_signals_all[thickV], 'r--')
+                plt.text(0, np.max(outputs_all[thickV]) + 10, pass_or_fail[thickV], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thickV]) + 30])
+                plt.title('AUTO 1 mm Parallel Bars (Vert.)')
+
+                plt.subplot(223)
+                plt.plot(horiz_data.iloc[:, 0])
+                plt.plot(horiz_data.iloc[:, 1], 'g--')
+                plt.plot(horiz_data.iloc[:, 3], 'k--')
+                plt.plot(horiz_data.iloc[:, 2], 'r--')
+                plt.text(2, np.max(horiz_data.iloc[:, 0]) + 10, pfh, fontsize=12)
+                plt.ylim([0, np.max(horiz_data.iloc[:, 0]) + 30])
+                plt.title('MACRO 1 mm Parallel Bars (Horiz.)')
+                plt.subplot(224)
+                plt.plot(vert_data.iloc[:, 0])
+                plt.plot(vert_data.iloc[:, 1], 'g--')
+                plt.plot(vert_data.iloc[:, 3], 'k--')
+                plt.plot(vert_data.iloc[:, 2], 'r--')
+                plt.text(2, np.max(vert_data.iloc[:, 0]) + 10, pfv, fontsize=12)
+                plt.ylim([0, np.max(vert_data.iloc[:, 0]) + 30])
+                plt.title(' MACRO 1 mm Parallel Bars (Vert.)')
+                plt.suptitle('256 x 256' + geos[gs] + 'RESULTS')
+                plt.show()
+
+            if matrix_dims == [512, 512]:
+                plt.figure()
+                plt.subplot(221)
+                plt.plot(outputs_all[thinH])
+                plt.plot(base_signals_all[thinH], 'g--')
+                plt.plot(signal50s_all[thinH], 'k--')
+                plt.plot(min_signals_all[thinH], 'r--')
+                plt.text(0, np.max(outputs_all[thinH]) + 10, pass_or_fail[thinH], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thinH]) + 30])
+                plt.title('0.5 mm Parallel Bars (Horiz.)')
+                plt.subplot(222)
+                plt.plot(outputs_all[thinV])
+                plt.plot(base_signals_all[thinV], 'g--')
+                plt.plot(signal50s_all[thinV], 'k--')
+                plt.plot(min_signals_all[thinV], 'r--')
+                plt.text(0, np.max(outputs_all[thinV]) + 10, pass_or_fail[thinV], fontsize=12)
+                plt.ylim([0, np.max(outputs_all[thinV]) + 30])
+                plt.title('0.5 mm Parallel Bars (Vert.)')
+
+                plt.subplot(223)
+                plt.plot(horiz_data.iloc[:, 0])
+                plt.plot(horiz_data.iloc[:, 1], 'g--')
+                plt.plot(horiz_data.iloc[:, 3], 'k--')
+                plt.plot(horiz_data.iloc[:, 2], 'r--')
+                plt.text(2, np.max(horiz_data.iloc[:, 0]) + 10, pfh, fontsize=12)
+                plt.ylim([0, np.max(horiz_data.iloc[:, 0]) + 30])
+                plt.title('MACRO 0.5 mm Parallel Bars (Horiz.)')
+                plt.subplot(224)
+                plt.plot(vert_data.iloc[:, 0])
+                plt.plot(vert_data.iloc[:, 1], 'g--')
+                plt.plot(vert_data.iloc[:, 3], 'k--')
+                plt.plot(vert_data.iloc[:, 2], 'r--')
+                plt.text(2, np.max(vert_data.iloc[:, 0]) + 10, pfv, fontsize=12)
+                plt.ylim([0, np.max(vert_data.iloc[:, 0]) + 30])
+                plt.title(' MACRO 0.5 mm Parallel Bars (Vert.)')
+                plt.suptitle('512 x 512' + geos[gs] + 'RESULTS')
+                plt.show()
+
+        """ NEXT ITERATION HERE"""
+        # sys.exit()
+
+
+
+
