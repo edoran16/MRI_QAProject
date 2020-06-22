@@ -72,3 +72,39 @@ def snr_meta(dicomfile):
         pixels_space = xx.PixelSpacing
 
     return matrix_size, pixels_space
+
+
+def check_ROI(roi_mask, phantom_image):
+    # phantom_image is binary mask. Need to convert to greyscale.
+    if np.max(phantom_image) == 1:  # binary
+        phantom_image = phantom_image * 255
+
+    # check ROI does not cover phantom i.e. covers any foreground signal
+    # cv2.imshow('ROI mask', roi_mask)
+    # cv2.waitKey(0)
+    # cv2.imshow('Phantom Mask', phantom_image)
+    # cv2.waitKey(0)
+
+    sum_image = roi_mask+phantom_image
+    sum_image = sum_image > 255
+    sum_sum_image = np.sum(sum_image.astype('uint8'))
+
+    if sum_sum_image > 0:
+        print('Error with ROI placement!!! Overlap with phantom.')
+        plt.figure()
+        plt.imshow(sum_image)
+        plt.show()
+
+    # check ROI area has not extended beyond FOV
+    roi_mask = roi_mask/np.max(roi_mask)  # convert to binary mask
+    sum_roi_mask = np.sum(roi_mask)
+
+    print('ROI area = ', sum_roi_mask, '(this should be 20 x 20 = 400)')
+
+    if sum_roi_mask != 400:
+        print('Error with ROI size! Matrix must extend beyond FOV.')
+
+    if sum_sum_image == 0 and sum_roi_mask == 400:
+        print('This ROI is perfectly fine.')
+
+
