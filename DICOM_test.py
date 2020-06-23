@@ -1,6 +1,7 @@
 import pydicom
 import pandas as pd
 
+
 def dicom_read_and_write(pathtofile, writetxt=False):
     """ function to read dicom file from specified path
     :param pathtofile: full path to dicom file
