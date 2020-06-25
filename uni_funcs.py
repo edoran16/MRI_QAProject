@@ -63,16 +63,9 @@ def create_2D_mask(img, show_graphical=False):
     return ch, bin_ch
 
 
-def f_uni_meta(dicomfile):  # TODO: is this required??
+def f_uni_meta(dicomfile):
     """ extract metadata for slice postion info calculations
     dicomfile = pydicom.dataset.FileDataset"""
-
-    # rows and columns
-    rows = dicomfile[0x0028, 0x0010]
-    rows = rows.value
-    cols = dicomfile[0x0028, 0x0011]
-    cols = cols.value
-    matrix_size = [rows, cols]
 
     # per-frame functional group sequence
     elem = dicomfile[0x5200, 0x9230]  # Per-frame Functional Groups Sequence
@@ -82,69 +75,8 @@ def f_uni_meta(dicomfile):  # TODO: is this required??
 
     for xx in elem4:
         pixels_space = xx.PixelSpacing
-        st = xx.SliceThickness
 
-    # MR Averages Sequence
-    elem5 = elem3.MRAveragesSequence
-    for yy in elem5:
-        NSA = yy.NumberOfAverages
-
-    # (5200, 9229)  Shared Functional Groups Sequence
-    elem6 = dicomfile[0x5200, 0x9229]
-    seq2 = elem6.value
-    elem7 = seq2[0]
-    # print(elem7)
-    elem8 = elem7.MRImagingModifierSequence
-    for zz in elem8:
-        PxlBW = zz.PixelBandwidth
-        Tx_Freq = zz.TransmitterFrequency
-
-    """ (0018, 9112) MR Timing and Related Parameters Sequence """
-
-    elem9 = elem7.MRTimingAndRelatedParametersSequence
-    for aa in elem9:
-        TR = aa.RepetitionTime
-
-    """ (0018, 9125) MR FOV / Geometry Sequence """
-    elem10 = elem7.MRFOVGeometrySequence
-    for bb in elem10:
-        N_PE = bb[0x0018, 0x9231].value  # MRAcquisitionPhaseEncodingSteps
-
-    return pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE
-
-
-def check_ROI(roi_mask, phantom_image):  # TODO: get rid of
-    # phantom_image is binary mask. Need to convert to greyscale.
-    if np.max(phantom_image) == 1:  # binary
-        phantom_image = phantom_image * 255
-
-    # check ROI does not cover phantom i.e. covers any foreground signal
-    # cv2.imshow('ROI mask', roi_mask)
-    # cv2.waitKey(0)
-    # cv2.imshow('Phantom Mask', phantom_image)
-    # cv2.waitKey(0)
-
-    sum_image = roi_mask + phantom_image
-    sum_image = sum_image > 255
-    sum_sum_image = np.sum(sum_image.astype('uint8'))
-
-    if sum_sum_image > 0:
-        print('Error with ROI placement!!! Overlap with phantom.')
-        plt.figure()
-        plt.imshow(sum_image)
-        plt.show()
-
-    # check ROI area has not extended beyond FOV
-    roi_mask = roi_mask / np.max(roi_mask)  # convert to binary mask
-    sum_roi_mask = np.sum(roi_mask)
-
-    print('ROI area = ', sum_roi_mask, '(this should be 20 x 20 = 400)')
-
-    if sum_roi_mask != 400:
-        print('Error with ROI size! Matrix must extend beyond FOV.')
-
-    if sum_sum_image == 0 and sum_roi_mask == 400:
-        print('This ROI is perfectly fine.')
+    return pixels_space
 
 
 def sort_import_data(directpath, geometry, pt):
@@ -170,7 +102,7 @@ def sort_import_data(directpath, geometry, pt):
                                 print('Matrix Size =', xdim, 'x', ydim)
 
                                 # Sequence parameters required for normalised SNR calculation
-                                pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE = f_uni_meta(ds)
+                                pixels_space = f_uni_meta(ds)
 
                                 img = ((imdata / np.max(imdata)) * 255).astype('uint8')  # grayscale
 
@@ -182,12 +114,11 @@ def sort_import_data(directpath, geometry, pt):
                                 OrthoSlicer3D(imdata).show()  # look at 3D volume data
                                 sys.exit()
 
-    return img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE
+    return img, imdata, pixels_space
 
 
 def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True):
-    # TODO; does this affect SAG and COR views?
-    # ACCOUNT FOR MISSING SIGNAL AT TOP OF PHANTOM (TRANSVERE VIEW ONLY).
+    # ACCOUNT FOR MISSING SIGNAL AT TOP OF PHANTOM (TRANSVERSE VIEW ONLY).
     if caseT:
         oi = np.zeros_like(img, dtype=np.uint8)  # creates zero array same dimensions as img
         oi[(img > filters.threshold_otsu(img)) == True] = 1  # Otsu threshold on image
@@ -225,13 +156,19 @@ def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True):
     marker_im = marker_im.astype('uint8')
     marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
 
+    dims = np.shape(img)
+    # cv2.line src/dst defined x, y same orientation and row, col. [0,0] = top left corner
+    # PROOF OF CONCEPT LINES
+    # cv2.line(marker_im, (10, 41), (246, 41), (255, 0, 255), 1)
+    # cv2.line(marker_im, (10, 215), (246, 215), (255, 0, 255), 1)
+
     cv2.line(marker_im, (pc_col + 10, pc_row + 10), (pc_col + 10, pc_row - 10), (0, 0, 255), 1)
     cv2.line(marker_im, (pc_col + 10, pc_row - 10), (pc_col - 10, pc_row - 10), (0, 0, 255), 1)
     cv2.line(marker_im, (pc_col - 10, pc_row - 10), (pc_col - 10, pc_row + 10), (0, 0, 255), 1)
     cv2.line(marker_im, (pc_col - 10, pc_row + 10), (pc_col + 10, pc_row + 10), (0, 0, 255), 1)
 
     area = ((pc_col + 10) - (pc_col - 10)) * ((pc_row + 10) - (pc_row - 10))
-    print('Centre ROI Area =', area)
+    # print('Centre ROI Area =', area)
     area_aim = 20 * 20
     if area != area_aim:
         print('Signal ROI area is too large/too small')
@@ -259,7 +196,7 @@ def get_signal_value(imdata, pc_r, pc_c):
     return signal0
 
 
-def obtain_uniformity_profile(imdata, src, dst, caseH, caseV, show_graphical=False):
+def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV, show_graphical=False):
     # src and dst are tuples of (x, y) i.e. (column, row)
 
     # draw line profile across centre line of phantom
@@ -272,16 +209,24 @@ def obtain_uniformity_profile(imdata, src, dst, caseH, caseV, show_graphical=Fal
 
     # cv2.imshow('test', improfile)
 
+    dims = np.shape(imdata)
+
     for xx in np.linspace(-4, 5, 10):
         if caseH:  # horizontal lines
-            print('HORIZONTAL PROFILE')  # drawn top of image to bottom of image
+            # print('HORIZONTAL PROFILE')  # drawn top of image to bottom of image
             src2 = (src[0], int(src[1] + xx))  # starting point (x, y)
             dst2 = (dst[0], int(dst[1] + xx))  # finish point
+            # to get line profile output
+            rows = np.repeat(src2[1], dims[0])
+            cols = np.linspace(src2[0], dst2[0], dims[1])
         if caseV:  # vertical lines
-            print('VERTICAL PROFILE')  # drawn LHS to RHS of image
+            # print('VERTICAL PROFILE')  # drawn LHS to RHS of image
             src2 = (int(src[0] + xx), int(src[1]))  # starting point
             dst2 = (int(dst[0] + xx), int(dst[1]))  # finish point
-        #
+            # to get line profile output
+            rows = np.linspace(src2[1], dst2[1], dims[0])
+            cols = np.repeat(src2[0], dims[1])
+
         # test = imdata.copy()
         # test[src2[1], src2[0]] = 15000
         # test[dst2[1], dst2[0]] = 25000
@@ -289,13 +234,14 @@ def obtain_uniformity_profile(imdata, src, dst, caseH, caseV, show_graphical=Fal
         # plt.imshow(test)
         # plt.show()
 
-        output = profile_line(imdata, src2, dst2)  # voxel values along specified line, coords specified (x, y)
+        output = imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)]
         outputs.append(output)
+
         if xx == 0:
-            print('centre line!')
-            improfile = display_profile_line(improfile, src2, dst2, caseH, caseV, linecolour=(0, 0, 255), show_graphical=False)
+            # print('centre line!')
+            improfile = display_profile_line(improfile, src2, dst2, pc_row, pc_col, dist80, caseH, caseV, linecolour=(0, 0, 255), show_graphical=False)
         else:
-            improfile = display_profile_line(improfile, src2, dst2, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
+            improfile = display_profile_line(improfile, src2, dst2, pc_row, pc_col, dist80, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
 
     cv2.imshow('Individual Profile Line', improfile)
     cv2.waitKey(0)
@@ -316,7 +262,7 @@ def obtain_uniformity_profile(imdata, src, dst, caseH, caseV, show_graphical=Fal
     return mean_output
 
 
-def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphical=False):
+def display_profile_line(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV, linecolour, show_graphical=False):
     # display profile line on phantom: from source code of profile_line function
     src_col, src_row = np.asarray(src, dtype=float)  # src = (x, y) = (col, row)
     dst_col, dst_row = np.asarray(dst, dtype=float)
@@ -326,19 +272,40 @@ def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphi
     if caseH:
         rows = np.repeat(int(src_row), dims[0])
         cols = np.linspace(int(src_col-1), int(dst_col-1), dims[1])
-        # TODO: SPEC
+        # Add 160 mm lines dist80mm = 82
+        # spec_rows = np.linspace(0, dims[0]-1, dims[0])
+        # spec_cols = np.repeat(pc_col - dist80, dims[1])
+        # spec_rows2 = np.linspace(0, dims[0] - 1, dims[0])
+        # spec_cols2 = np.repeat(pc_col + dist80, dims[1])
+
     if caseV:
         rows = np.linspace(int(src_row-1), int(dst_row-1), dims[0])
         cols = np.repeat(int(src_col), dims[1])
-        # TODO: SPEC
+        # Add 160 mm lines dist80mm = 82
+        # spec_rows = np.repeat(pc_row - dist80, dims[0])
+        # spec_cols = np.linspace(0, dims[1] - 1, dims[1])
+        # spec_rows2 = np.repeat(pc_row + dist80, dims[0])
+        # spec_cols2 = np.linspace(0, dims[1] - 1, dims[1])
 
     imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)] = linecolour
 
-    imdata[np.array([spec_rows], dtype=int), np.array([spec_cols], dtype=int)] = (0, 255, 0)
+    # 160 mm regions
+    if caseH:
+        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col + dist80, pc_row), (0, 0, 0), thickness=2, tipLength=0.1)
+        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col - dist80, pc_row), (0, 0, 0), thickness=2, tipLength=0.1)
+        cv2.putText(imdata, "160 mm", (pc_col-20, pc_row-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+
+    if caseV:
+        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row + dist80), (0, 0, 0), thickness=2, tipLength=0.1)
+        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row - dist80), (0, 0, 0), thickness=2, tipLength=0.1)
+        cv2.putText(imdata, "160 mm", (pc_col + 10, pc_row), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+
+    # imdata[np.array([spec_rows], dtype=int), np.array([spec_cols], dtype=int)] = (0, 255, 0)
+    # imdata[np.array([spec_rows2], dtype=int), np.array([spec_cols2], dtype=int)] = (0, 255, 0)
 
     # plot sampled line on phantom to visualise where output comes from
     if show_graphical:
-        cv2.imshow('Individual Profile Line', imdata)
+        cv2.imshow('Individual Profile Line!!', imdata)
         cv2.waitKey(0)
 
     return imdata
@@ -352,8 +319,10 @@ def calc_fUniformity(signal, uniformity_range):
             no_voxels_in_range = no_voxels_in_range + 1
 
     fractional_uniformity = no_voxels_in_range / total_no_of_voxels
+    mean_signal = np.mean(signal)
+    std_signal = np.std(signal)
 
-    return fractional_uniformity
+    return fractional_uniformity, mean_signal, std_signal
 
 
 
