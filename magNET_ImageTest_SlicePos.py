@@ -213,7 +213,7 @@ for zz in range(start_slice, last_slice+1):
     for xx in range(num):
         cent[xx, :] = props[xx].centroid  # central coordinate
 
-    cent = cent.astype(int)
+    cent = np.round(cent).astype(int)  # TODO: resave all figures with this amendment!!
 
     for i in cent:
         # draw the center of the circle
