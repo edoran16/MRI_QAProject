@@ -7,6 +7,7 @@ import numpy as np
 import os
 from DICOM_test import dicom_read_and_write
 from nibabel.viewers import OrthoSlicer3D
+from scipy.signal import find_peaks
 
 
 def sort_import_data(directpath, geometry):
@@ -126,4 +127,152 @@ def geo_meta(dicomfile):
         pixels_space = xx.PixelSpacing
 
     return matrix_size, st, pixels_space
+
+
+def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False):
+    # src and dst are tuples of (x, y) i.e. (column, row)
+
+    # draw line profile across centre line of phantom
+    outputs = []
+    improfile = np.copy(imdata)
+    improfile = (improfile / np.max(improfile))  # normalised
+    improfile = improfile * 255  # greyscale
+    improfile = improfile.astype('uint8')
+    improfile = cv2.cvtColor(improfile, cv2.COLOR_GRAY2BGR)  # grayscale to colour
+
+    # cv2.imshow('test', improfile)
+
+    dims = np.shape(imdata)
+
+    if caseH:  # horizontal lines
+        # print('HORIZONTAL PROFILE')  # drawn top of image to bottom of image
+        # to get line profile output
+        rows = np.repeat(src[1], (dst[0]+1)-src[0])
+        cols = np.linspace(src[0], dst[0], (dst[0]+1)-src[0])
+    if caseV:  # vertical lines
+        # print('VERTICAL PROFILE')  # drawn LHS to RHS of image
+        # to get line profile output
+        rows = np.linspace(src[1], dst[1], dims[0])
+        cols = np.repeat(src[0], dims[1])
+
+        # test = imdata.copy()
+        # test[src[1], src[0]] = 15000
+        # test[dst[1], dst[0]] = 25000
+        # plt.figure()
+        # plt.imshow(test)
+        # plt.show()
+
+    output = imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)]
+
+    improfile = display_profile_line(improfile, src, dst, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
+
+    cv2.imshow('Individual Profile Line', improfile)
+    cv2.waitKey(0)
+
+    # plot profile line outputs + mean output vs. voxels sampled
+    if show_graphical:
+        plt.figure()
+        plt.plot(output, 'r')
+        plt.xlabel('Number of Voxels')
+        plt.ylabel('Signal')
+        plt.show()
+
+    return output
+
+
+def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphical=False):
+    # display profile line on phantom: from source code of profile_line function
+    src_col, src_row = np.asarray(src, dtype=float)  # src = (x, y) = (col, row)
+    dst_col, dst_row = np.asarray(dst, dtype=float)
+
+    dims = np.shape(imdata)
+
+    if caseH:
+        rows = np.repeat(int(src_row), dims[0])
+        cols = np.linspace(int(src_col-1), int(dst_col-1), dims[1])
+
+    if caseV:
+        rows = np.linspace(int(src_row-1), int(dst_row-1), dims[0])
+        cols = np.repeat(int(src_col), dims[1])
+
+    imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)] = linecolour
+
+    # plot sampled line on phantom to visualise where output comes from
+    if show_graphical:
+        cv2.imshow('Individual Profile Line!!', imdata)
+        cv2.waitKey(0)
+
+    return imdata
+
+
+def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.15, show_graphical=False):
+    # normalise profile
+    profile = (profile - np.min(profile)) / (np.max(profile) - np.min(profile))
+
+    if show_graphical:
+        plt.plot(profile)
+        plt.title('Normalised Profile')
+        plt.show()
+
+    # define region of signal profile around plate
+    profile2 = np.max(profile) - profile  # invert profile for peak detection
+
+    if show_graphical:
+        plt.plot(profile2)
+        plt.title('Inverted Profile')
+        plt.show()
+
+    peaks, _ = find_peaks(profile2, height=(np.max(profile) - np.min(profile)))
+    base = int(np.round((basefactor * len(profile2))))
+    peak_minus = peaks - base
+    peak_plus = peaks + base
+    profile_cropped = profile[int(peak_minus):int(peak_plus)]
+
+    if show_graphical:
+        plt.plot(profile2)
+        plt.plot(peaks, profile2[peaks], "x")
+        plt.title('Detecting Extrema to Define Plate and Surrounding Region')
+        plt.show()
+
+    profile_cropped = profile_cropped / np.max(profile_cropped)
+
+    if show_graphical:
+        plt.plot(profile_cropped)
+        plt.title('Signal Profile Cropped to Plate')
+        plt.show()
+
+    # FWHM
+    base2 = int(np.round(basefactor2 * len(profile_cropped)))
+    prof_min = np.min(profile_cropped)
+    prof_baseline = np.mean(np.append(profile_cropped[:base2], profile_cropped[-base2:]))
+    prof_50 = prof_min + ((prof_baseline - prof_min) / 2)
+
+    fwhm_idx = np.where(profile_cropped <= prof_50)
+    fwhm_idx_shape = np.shape(fwhm_idx)
+    fwhm = fwhm_idx_shape[1] /pixels_space[1]
+    print('FWHM = ', fwhm)
+
+    plt.figure()
+    plt.plot(profile_cropped, 'r')
+    plt.plot(np.min(fwhm_idx), prof_50, 'ko', label='_nolegend_')
+    plt.plot(np.max(fwhm_idx), prof_50, 'ko', label='_nolegend_')
+    plt.hlines(prof_baseline, 1, len(profile_cropped) - 1, color='g', linestyles='dashdot')
+    plt.hlines(prof_min, 1, len(profile_cropped) - 1, color='b', linestyles='dashdot')
+    plt.hlines(prof_50, np.min(fwhm_idx), np.max(fwhm_idx), color='k', linestyles='solid')
+    plt.vlines(base2, 0, 1, color='c', linestyles='dashed')
+    plt.vlines(len(profile_cropped) - base2, 0, 1, color='c', linestyles='dashed')
+    plt.text(np.mean(fwhm_idx), prof_50 + 0.05, 'FWHM', fontsize=12, horizontalalignment='center')
+    plt.xlabel('Number of Voxels')
+    plt.ylabel('Signal')
+    plt.legend(['Plate Profile', 'Baseline', 'Minimum', '50 % Threshold'], loc='center left')
+    plt.title('Slice Width Measurement')
+    plt.show()
+
+    stretch_factor = 5
+    slice_width = fwhm / stretch_factor
+
+    print('Measured slice width =', slice_width)
+    print('Nominal slice width =', st)
+
+    return slice_width
 

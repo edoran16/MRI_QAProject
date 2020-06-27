@@ -239,8 +239,6 @@ for ii in range(len(geos)):
         else:
             pass_fail.append('PASS')
 
-    print(pass_fail)
-
     CV = (np.std(errors)/np.mean(errors))*100
     print('Coefficient of Variation =', CV)
 
@@ -252,7 +250,6 @@ for ii in range(len(geos)):
     indV = indH + (N/2)  # the x locations for the groups
     indHV = np.linspace(0, N-1, N)
     ind = np.linspace(-1, N, N+2)
-    print(indH, indV, ind)
     width = 0.5  # the width of the bars: can also be len(x) sequence
 
     p1 = plt.bar(indH, errorsH, width)
@@ -274,4 +271,65 @@ for ii in range(len(geos)):
     plt.ylim([-2, 2])
 
     plt.show()
+
+    # TODO: compare to Excel sheet data
+
+    """ SLice Width """
+    # plates are located in-between top/middle, middle/bottom rods
+    # line profile through plate 1
+    src_1_x = src_t[0]  # int(np.round(src_t[0] + ((src_c[0] - src_t[0]) / 2)))
+    src_1_y = int(np.round(src_t[1] + ((src_m[1] - src_t[1])/2)))  # [x, y] notation
+    dst_1_x = dst_t[0]  # int(np.round(src_c[0] + ((dst_t[0] - dst_c[0]) / 2)))
+    dst_1_y = int(np.round(dst_m[1] + ((dst_t[1] - dst_m[1]) / 2)))  # [x, y] notation
+
+    # line profile through plate 2
+    src_2_x = src_t[0]  # int(np.round(src_t[0] + ((src_c[0] - src_t[0]) / 2)))
+    src_2_y = int(np.round(src_m[1] + ((src_b[1] - src_m[1]) / 2)))  # [x, y] notation
+    dst_2_x = dst_t[0]  # int(np.round(src_c[0] + ((dst_t[0] - dst_c[0]) / 2)))
+    dst_2_y = int(np.round(dst_m[1] + ((dst_b[1] - dst_m[1]) / 2)))  # [x, y] notation
+
+    swmarker_im = phim_gray.copy()
+    swmarker_im = swmarker_im.astype('uint8')
+    swmarker_im = cv2.cvtColor(swmarker_im, cv2.COLOR_GRAY2BGR)  # for horizontal lines
+
+    cv2.line(swmarker_im, (src_1_x, src_1_y), (dst_1_x, dst_1_y), (0, 0, 255), 1)  # plate 1 profile
+    cv2.line(swmarker_im, (src_2_x, src_2_y), (dst_2_x, dst_2_y), (0, 0, 255), 1)  # plate 2 profile
+
+    if show_graphical:
+        cv2.imshow("Slice Width Measurements", swmarker_im)
+        cv2.waitKey(0)
+
+    # draw line profiles
+    p1_profile = gf.obtain_profile(imdata, (src_1_x, src_1_y), (dst_1_x, dst_1_y), caseH=True, caseV=False,
+                                   show_graphical=False)
+
+    p2_profile = gf.obtain_profile(imdata, (src_2_x, src_2_y), (dst_2_x, dst_2_y), caseH=True, caseV=False,
+                                   show_graphical=False)
+
+    show_graphical = True
+
+    if show_graphical:
+        plt.plot(p1_profile)
+        plt.title('Original Plate 1 Profile')
+        plt.show()
+        plt.plot(p2_profile)
+        plt.title('Original Plate 2 Profile')
+        plt.show()
+
+    p1_slice_width = gf.slice_width_calc(p1_profile, pixels_space, st, show_graphical=False)
+    p2_slice_width = gf.slice_width_calc(p2_profile, pixels_space, st, show_graphical=False)
+
+    upperlim = st+(0.1*st)
+    lowerlim = st-(0.1*st)
+
+    if upperlim < p1_slice_width < lowerlim:
+        print('Slice Width for Plate 1 (', p1_slice_width, ') is OUTWITH tolerance limits.')
+    else:
+        print('Slice Width for Plate 1 (', p1_slice_width, ') is within tolerance limits.')
+    if upperlim < p2_slice_width < lowerlim:
+        print('Slice Width for Plate 2 (', p2_slice_width, ') is OUTWITH tolerance limits.')
+    else:
+        print('Slice Width for Plate 2 (', p2_slice_width, ') is within tolerance limits.')
+
+    sys.exit()
 
