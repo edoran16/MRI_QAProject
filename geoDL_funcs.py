@@ -7,7 +7,7 @@ import numpy as np
 import os
 from DICOM_test import dicom_read_and_write
 from nibabel.viewers import OrthoSlicer3D
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, medfilt
 
 
 def sort_import_data(directpath, geometry):
@@ -152,8 +152,8 @@ def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False):
     if caseV:  # vertical lines
         # print('VERTICAL PROFILE')  # drawn LHS to RHS of image
         # to get line profile output
-        rows = np.linspace(src[1], dst[1], dims[0])
-        cols = np.repeat(src[0], dims[1])
+        rows = np.linspace(src[1], dst[1], (dst[1]+1)-src[1])
+        cols = np.repeat(src[0], (dst[1]+1)-src[1])
 
         # test = imdata.copy()
         # test[src[1], src[0]] = 15000
@@ -188,12 +188,12 @@ def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphi
     dims = np.shape(imdata)
 
     if caseH:
-        rows = np.repeat(int(src_row), dims[0])
-        cols = np.linspace(int(src_col-1), int(dst_col-1), dims[1])
+        rows = np.repeat(int(src_row), (dst[0]+1)-src[0])
+        cols = np.linspace(int(src_col-1), int(dst_col-1), (dst[0]+1)-src[0])
 
     if caseV:
-        rows = np.linspace(int(src_row-1), int(dst_row-1), dims[0])
-        cols = np.repeat(int(src_col), dims[1])
+        rows = np.linspace(int(src_row-1), int(dst_row-1), (dst[1]+1)-src[1])
+        cols = np.repeat(int(src_col), (dst[1]+1)-src[1])
 
     imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)] = linecolour
 
@@ -215,22 +215,31 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
         plt.show()
 
     # define region of signal profile around plate
-    profile2 = np.max(profile) - profile  # invert profile for peak detection
+    profile_inv = np.max(profile) - profile  # invert profile for peak detection
 
     if show_graphical:
-        plt.plot(profile2)
+        plt.plot(profile_inv)
         plt.title('Inverted Profile')
         plt.show()
 
-    peaks, _ = find_peaks(profile2, height=(np.max(profile) - np.min(profile)))
-    base = int(np.round((basefactor * len(profile2))))
+    profile_smoothed = medfilt(profile_inv, kernel_size=17)
+
+    if show_graphical:
+        plt.plot(profile_smoothed)
+        plt.title('Inverted smoothed Profile')
+        plt.show()
+
+    profile_inv = profile_smoothed  # increase accuracy for detecting centre of peak
+
+    peaks, _ = find_peaks(profile_inv, height=0.9*(np.max(profile) - np.min(profile)))
+    base = int(np.round((basefactor * len(profile_inv))))
     peak_minus = peaks - base
     peak_plus = peaks + base
     profile_cropped = profile[int(peak_minus):int(peak_plus)]
 
     if show_graphical:
-        plt.plot(profile2)
-        plt.plot(peaks, profile2[peaks], "x")
+        plt.plot(profile_inv)
+        plt.plot(peaks, profile_inv[peaks], "x")
         plt.title('Detecting Extrema to Define Plate and Surrounding Region')
         plt.show()
 
@@ -249,7 +258,7 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
 
     fwhm_idx = np.where(profile_cropped <= prof_50)
     fwhm_idx_shape = np.shape(fwhm_idx)
-    fwhm = fwhm_idx_shape[1] /pixels_space[1]
+    fwhm = fwhm_idx_shape[1]/pixels_space[1]
     print('FWHM = ', fwhm)
 
     plt.figure()
@@ -263,7 +272,7 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
     plt.vlines(len(profile_cropped) - base2, 0, 1, color='c', linestyles='dashed')
     plt.text(np.mean(fwhm_idx), prof_50 + 0.05, 'FWHM', fontsize=12, horizontalalignment='center')
     plt.xlabel('Number of Voxels')
-    plt.ylabel('Signal')
+    plt.ylabel('Normalised Signal')
     plt.legend(['Plate Profile', 'Baseline', 'Minimum', '50 % Threshold'], loc='center left')
     plt.title('Slice Width Measurement')
     plt.show()

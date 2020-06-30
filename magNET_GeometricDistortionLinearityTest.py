@@ -12,9 +12,9 @@ directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/GEO_Images/"
 
 geos = ['_TRA', '_SAG', '_COR']
-show_graphical = False
 
 for ii in range(len(geos)):
+    show_graphical = False
     geometry = geos[ii]
     print('Data geometry =', geometry, '.')
     if geometry == '_TRA':
@@ -110,7 +110,6 @@ for ii in range(len(geos)):
 
     min_row = np.min(cent[:, 0])
     max_row = np.max(cent[:, 0])
-
     min_col = np.min(cent[:, 1])
     max_col = np.max(cent[:, 1])
 
@@ -189,9 +188,9 @@ for ii in range(len(geos)):
     vmarker_im = vmarker_im.astype('uint8')
     vmarker_im = cv2.cvtColor(vmarker_im, cv2.COLOR_GRAY2BGR)  # for vertical lines
 
-    cv2.line(vmarker_im, src_t, src_b, (0, 0, 255), 1)  # left line
-    cv2.line(vmarker_im, src_c, dst_c, (0, 0, 255), 1)  # middle line
-    cv2.line(vmarker_im, dst_t, dst_b, (0, 0, 255), 1)  # right line
+    cv2.line(vmarker_im, src_t, src_b, (0, 255, 0), 1)  # left line
+    cv2.line(vmarker_im, src_c, dst_c, (0, 255, 0), 1)  # middle line
+    cv2.line(vmarker_im, dst_t, dst_b, (0, 255, 0), 1)  # right line
 
     if show_graphical:
         cv2.imshow('vert. marker image', vmarker_im.astype('uint8'))
@@ -272,21 +271,35 @@ for ii in range(len(geos)):
 
     plt.show()
 
-    # TODO: compare to Excel sheet data
+    # TODO: compare to Excel sheet distortion and linearity data
 
-    """ SLice Width """
+    """ Slice Width """
     # plates are located in-between top/middle, middle/bottom rods
     # line profile through plate 1
-    src_1_x = src_t[0]  # int(np.round(src_t[0] + ((src_c[0] - src_t[0]) / 2)))
+    src_1_x = src_t[0]
     src_1_y = int(np.round(src_t[1] + ((src_m[1] - src_t[1])/2)))  # [x, y] notation
-    dst_1_x = dst_t[0]  # int(np.round(src_c[0] + ((dst_t[0] - dst_c[0]) / 2)))
+    dst_1_x = dst_t[0]
     dst_1_y = int(np.round(dst_m[1] + ((dst_t[1] - dst_m[1]) / 2)))  # [x, y] notation
 
+    if caseS:  # sagittal data is rotated pi/2 wrt to transverse and coronal data
+        print('SAGITTAL SLICE WIDTH EDIT PLATE 1 COORDINATES')
+        src_1_x = int(np.round(src_t[0] + ((src_c[0] - src_t[0]) / 2)))  # [x, y] notation
+        src_1_y = src_t[1]
+        dst_1_x = src_1_x
+        dst_1_y = src_b[1]
+
     # line profile through plate 2
-    src_2_x = src_t[0]  # int(np.round(src_t[0] + ((src_c[0] - src_t[0]) / 2)))
+    src_2_x = src_t[0]
     src_2_y = int(np.round(src_m[1] + ((src_b[1] - src_m[1]) / 2)))  # [x, y] notation
-    dst_2_x = dst_t[0]  # int(np.round(src_c[0] + ((dst_t[0] - dst_c[0]) / 2)))
+    dst_2_x = dst_t[0]
     dst_2_y = int(np.round(dst_m[1] + ((dst_b[1] - dst_m[1]) / 2)))  # [x, y] notation
+
+    if caseS:  # sagittal data is rotated pi/2 wrt to transverse and coronal data
+        print('SAGITTAL SLICE WIDTH EDIT PLATE 2 PROFILE COORDINATES')
+        src_2_x = int(np.round(src_c[0] + ((dst_t[0] - src_c[0]) / 2)))  # [x, y] notation
+        src_2_y = src_t[1]
+        dst_2_x = src_2_x
+        dst_2_y = src_b[1]
 
     swmarker_im = phim_gray.copy()
     swmarker_im = swmarker_im.astype('uint8')
@@ -294,17 +307,26 @@ for ii in range(len(geos)):
 
     cv2.line(swmarker_im, (src_1_x, src_1_y), (dst_1_x, dst_1_y), (0, 0, 255), 1)  # plate 1 profile
     cv2.line(swmarker_im, (src_2_x, src_2_y), (dst_2_x, dst_2_y), (0, 0, 255), 1)  # plate 2 profile
-
+    show_graphical = True
     if show_graphical:
         cv2.imshow("Slice Width Measurements", swmarker_im)
         cv2.waitKey(0)
 
     # draw line profiles
-    p1_profile = gf.obtain_profile(imdata, (src_1_x, src_1_y), (dst_1_x, dst_1_y), caseH=True, caseV=False,
-                                   show_graphical=False)
+    if caseS:
+        caseH = False
+        caseV = True  # slice width profiles are vertical
+    else:
+        caseH = True  # slice width profiles are horizontal
+        caseV = False
 
-    p2_profile = gf.obtain_profile(imdata, (src_2_x, src_2_y), (dst_2_x, dst_2_y), caseH=True, caseV=False,
-                                   show_graphical=False)
+    print(caseH, caseV)
+
+    p1_profile = gf.obtain_profile(imdata, (src_1_x, src_1_y), (dst_1_x, dst_1_y), caseH, caseV,
+                                   show_graphical=True)
+
+    p2_profile = gf.obtain_profile(imdata, (src_2_x, src_2_y), (dst_2_x, dst_2_y), caseH, caseV,
+                                   show_graphical=True)
 
     show_graphical = True
 
@@ -316,8 +338,8 @@ for ii in range(len(geos)):
         plt.title('Original Plate 2 Profile')
         plt.show()
 
-    p1_slice_width = gf.slice_width_calc(p1_profile, pixels_space, st, show_graphical=False)
-    p2_slice_width = gf.slice_width_calc(p2_profile, pixels_space, st, show_graphical=False)
+    p1_slice_width = gf.slice_width_calc(p1_profile, pixels_space, st, show_graphical=True)
+    p2_slice_width = gf.slice_width_calc(p2_profile, pixels_space, st, show_graphical=True)
 
     upperlim = st+(0.1*st)
     lowerlim = st-(0.1*st)
@@ -331,5 +353,5 @@ for ii in range(len(geos)):
     else:
         print('Slice Width for Plate 2 (', p2_slice_width, ') is within tolerance limits.')
 
-    sys.exit()
+    # todo: compare with excel slice width data
 

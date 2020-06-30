@@ -198,7 +198,6 @@ def get_signal_value(imdata, pc_r, pc_c):
 
 def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV, show_graphical=False):
     # src and dst are tuples of (x, y) i.e. (column, row)
-
     # draw line profile across centre line of phantom
     outputs = []
     improfile = np.copy(imdata)
@@ -206,8 +205,6 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
     improfile = improfile * 255  # greyscale
     improfile = improfile.astype('uint8')
     improfile = cv2.cvtColor(improfile, cv2.COLOR_GRAY2BGR)  # grayscale to colour
-
-    # cv2.imshow('test', improfile)
 
     dims = np.shape(imdata)
 
@@ -227,13 +224,6 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
             rows = np.linspace(src2[1], dst2[1], dims[0])
             cols = np.repeat(src2[0], dims[1])
 
-        # test = imdata.copy()
-        # test[src2[1], src2[0]] = 15000
-        # test[dst2[1], dst2[0]] = 25000
-        # plt.figure()
-        # plt.imshow(test)
-        # plt.show()
-
         output = imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)]
         outputs.append(output)
 
@@ -243,15 +233,17 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
         else:
             improfile = display_profile_line(improfile, src2, dst2, pc_row, pc_col, dist80, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
 
-    cv2.imshow('Individual Profile Line', improfile)
-    cv2.waitKey(0)
+        if show_graphical:
+            cv2.imshow('Individual Profile Line', improfile)
+            cv2.waitKey(0)
 
     mean_output = np.mean(outputs, axis=0)
 
     # plot profile line outputs + mean output vs. voxels sampled
     if show_graphical:
         plt.figure()
-        plt.subplot(221)
+        if dist80 != 0:
+            plt.subplot(221)
         for ee in range(10):
             plt.plot(outputs[ee], 'b')
         plt.plot(mean_output, 'r')
@@ -290,15 +282,16 @@ def display_profile_line(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV,
     imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)] = linecolour
 
     # 160 mm regions
-    if caseH:
-        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col + dist80, pc_row), (0, 0, 0), thickness=2, tipLength=0.1)
-        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col - dist80, pc_row), (0, 0, 0), thickness=2, tipLength=0.1)
-        cv2.putText(imdata, "160 mm", (pc_col-20, pc_row-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+    if dist80 != 0:
+        if caseH:
+            cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col + dist80, pc_row), (0, 0, 0), thickness=2, tipLength=0.1)
+            cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col - dist80, pc_row), (0, 0, 0), thickness=2, tipLength=0.1)
+            cv2.putText(imdata, "160 mm", (pc_col-20, pc_row-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
 
-    if caseV:
-        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row + dist80), (0, 0, 0), thickness=2, tipLength=0.1)
-        cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row - dist80), (0, 0, 0), thickness=2, tipLength=0.1)
-        cv2.putText(imdata, "160 mm", (pc_col + 10, pc_row), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+        if caseV:
+            cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row + dist80), (0, 0, 0), thickness=2, tipLength=0.1)
+            cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row - dist80), (0, 0, 0), thickness=2, tipLength=0.1)
+            cv2.putText(imdata, "160 mm", (pc_col + 10, pc_row), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
 
     # imdata[np.array([spec_rows], dtype=int), np.array([spec_cols], dtype=int)] = (0, 255, 0)
     # imdata[np.array([spec_rows2], dtype=int), np.array([spec_cols2], dtype=int)] = (0, 255, 0)

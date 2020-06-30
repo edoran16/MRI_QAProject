@@ -192,9 +192,6 @@ def draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graph
     phantom_centre = props[0].centroid
     pc_row, pc_col = [int(phantom_centre[0]), int(phantom_centre[1])]
 
-    # centre signal ROI
-    signal_roi_1 = img[pc_row, pc_col]
-
     # show detected regions and lines on marker_im
     marker_im = img.copy()
     marker_im = marker_im.astype('uint8')
@@ -397,7 +394,7 @@ def get_background_noise_value(imdata, bROIs):
 
     noise = np.mean([n1, n2, n3, n4, n5])
     print('Noise in each ROI = ', [n1, n2, n3, n4, n5])
-    print('Noise (total) = ', noise.round(2))
+    print('Noise (total) = ', noise)
 
     return noise
 
@@ -439,3 +436,108 @@ def calc_NSNR(pixels_space, st, N_PE, TR, NSA, SNR_background, Qfactor, BW=38.4,
     print('Normalised SNR = ', NSNR.round(2))
 
     return NSNR
+
+
+def draw_spine_signal_ROIs(bin_mask, img, show_bbox=False, show_graphical=True):
+    """ show_bbox = False  # show bounding box of phantom on marker image """
+    # draw signal ROIs
+    # get centre of phantom and definte 5 ROIs from there
+    label_img, num = label(bin_mask, connectivity=img.ndim, return_num=True)  # labels the mask
+
+    props = regionprops(label_img)  # returns region properties for phantom mask ROI
+    phantom_centre = props[0].centroid
+    pc_row, pc_col = [int(phantom_centre[0]), int(phantom_centre[1])]
+
+    # show detected regions and lines on marker_im
+    marker_im = img.copy()
+    marker_im = marker_im.astype('uint8')
+    marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
+
+    cv2.line(marker_im, (pc_col + 18, pc_row + 110), (pc_col + 18, pc_row - 110), (0, 0, 255), 1)
+    cv2.line(marker_im, (pc_col + 18, pc_row - 110), (pc_col - 17, pc_row - 110), (0, 0, 255), 1)
+    cv2.line(marker_im, (pc_col - 17, pc_row - 110), (pc_col - 17, pc_row + 110), (0, 0, 255), 1)
+    cv2.line(marker_im, (pc_col - 17, pc_row + 110), (pc_col + 18, pc_row + 110), (0, 0, 255), 1)
+
+    area = ((pc_col + 18) - (pc_col - 17)) * ((pc_row + 110) - (pc_row - 110))
+    print('Centre ROI Area =', area)
+    area_aim = 220 * 35
+    if area != area_aim:
+        print('Signal ROI area is too large/too small')
+        sys.exit()
+
+    # draw bounding box around phantom
+    bbox = props[0].bbox  # (min_row, min_col, max_row, max_col)
+    if show_bbox:
+        cv2.line(marker_im, (bbox[1], bbox[0]), (bbox[1], bbox[2]), (255, 255, 255), 1)
+        cv2.line(marker_im, (bbox[1], bbox[2]), (bbox[3], bbox[2]), (255, 255, 255), 1)
+        cv2.line(marker_im, (bbox[3], bbox[2]), (bbox[3], bbox[0]), (255, 255, 255), 1)
+        cv2.line(marker_im, (bbox[3], bbox[0]), (bbox[1], bbox[0]), (255, 255, 255), 1)
+
+    if show_graphical:
+        cv2.imshow('Signal ROIs', marker_im)
+        cv2.waitKey(0)
+
+    return pc_row, pc_col, marker_im
+
+
+def get_spine_signal_value(imdata, pc_row, pc_col):
+    # signal values corresponding to voxels inside each signal ROI (don't use greyscale image!)
+    signal0 = np.mean(imdata[pc_row - 110:pc_row + 110, pc_col - 17:pc_col + 18])
+
+    print('Mean signal (total) =', signal0)
+
+    return signal0
+
+
+def draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=True):
+    # Background ROIs according to MagNET protocol
+    # auto detection of 4 x background ROI samples (one in each corner of background)
+    dims = np.shape(mask)
+
+    idx = np.where(mask)  # returns indices where the phantom exists (from Otsu threshold)
+    rows = idx[0]
+    cols = idx[1]
+
+    min_col = np.min(cols)  # first column of phantom
+    max_col = np.max(cols)  # last column of phantom
+
+    row_third = int(round(dims[0]/3))
+    mid_row1 = int(round(row_third/2))
+    mid_row2 = mid_row1 + row_third
+    mid_row3 = mid_row2 + row_third
+
+    mid_row4 = int(round(mid_row1 + ((mid_row2 - mid_row1)/2)))
+    mid_row5 = int(round(mid_row2 + ((mid_row3 - mid_row2) / 2)))
+
+    mid_col1 = int(round(min_col/2))
+    mid_col2 = int(round(max_col + ((dims[1] - max_col)/2)))
+
+    bROI1 = np.zeros(np.shape(mask))  # initialise image matrix for each corner ROI
+    bROI2 = np.zeros(np.shape(mask))
+    bROI3 = np.zeros(np.shape(mask))
+    bROI4 = np.zeros(np.shape(mask))
+    bROI5 = np.zeros(np.shape(mask))
+
+    # Background ROIs according to MagNET protocol
+    bROI1[pc_row - 5:pc_row + 5, mid_col1 - 5:mid_col1 + 5] = 255  # top left
+    marker_im[pc_row - 5:pc_row + 5, mid_col1 - 5:mid_col1 + 5] = (0, 0, 255)
+
+    bROI2[mid_row1 - 5:mid_row1 + 5, mid_col1 - 5:mid_col1 + 5] = 255  # top right
+    marker_im[mid_row1 - 5:mid_row1 + 5, mid_col1 - 5:mid_col1 + 5] = (0, 255, 0)
+
+    bROI3[mid_row3 - 5:mid_row3 + 5, mid_col1 - 5:mid_col1 + 5] = 255  # bottom left
+    marker_im[mid_row3 - 5:mid_row3 + 5, mid_col1 - 5:mid_col1 + 5] = (255, 0, 0)
+
+    bROI4[mid_row4 - 5:mid_row4 + 5, mid_col2 - 5:mid_col2 + 5] = 255  # bottom centre
+    marker_im[mid_row4 - 5:mid_row4 + 5, mid_col2 - 5:mid_col2 + 5] = (0, 140, 255)
+
+    bROI5[mid_row5 - 5:mid_row5 + 5, mid_col2 - 5:mid_col2 + 5] = 255  # bottom right
+    marker_im[mid_row5 - 5:mid_row5 + 5, mid_col2 - 5:mid_col2 + 5] = (205, 235, 255)
+
+    if show_graphical:
+        cv2.imshow('Signal and Background ROIs', marker_im)
+        cv2.waitKey(0)
+
+    bROIs = [bROI1, bROI2, bROI3, bROI4, bROI5]
+
+    return bROIs

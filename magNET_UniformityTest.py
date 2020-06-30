@@ -113,14 +113,17 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         plt.show()
 
         # fractional uniformity calculation
-        fractional_uniformityH = uf.calc_fUniformity(signalH, uniformity_range)
-        fractional_uniformityV = uf.calc_fUniformity(signalV, uniformity_range)
+        fractional_uniformityH, meanH, stdH = uf.calc_fUniformity(signalH, uniformity_range)
+        fractional_uniformityV, meanV, stdV = uf.calc_fUniformity(signalV, uniformity_range)
 
         if caseT:
-            print('Fractional X Uniformity = ', fractional_uniformityH)
-            print('Fractional Y Uniformity = ', fractional_uniformityV)
+            print('Fractional X Uniformity = ', fractional_uniformityH, '(mean =', meanH.round(2), 'std. dev. =',
+                  stdH.round(2), ')')
+            print('Fractional Y Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =',
+                  stdV.round(2), ')')
 
-    else:  # NICL phantom - analyse all 3 geometries
+
+else:  # NICL phantom - analyse all 3 geometries
         for ii in range(len(geos)):
             geometry = geos[ii]
             print('Data geometry =', geometry, '.')
