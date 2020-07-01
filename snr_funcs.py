@@ -291,10 +291,12 @@ def get_signal_value(imdata, pc_row, pc_col, quad_centres):
     signal3 = np.mean(imdata[centre3[0] - 10:centre3[0] + 10, centre3[1] - 10:centre3[1] + 10])
     signal4 = np.mean(imdata[centre4[0] - 10:centre4[0] + 10, centre4[1] - 10:centre4[1] + 10])
 
-    mean_signal = np.mean([signal0, signal1, signal2, signal3, signal4])  # mean signal from image data (not filtered!)
+    all_signals = [signal0, signal1, signal2, signal3, signal4]
+
+    mean_signal = np.mean(all_signals)  # mean signal from image data (not filtered!)
     print('Mean signal (total) =', mean_signal)
 
-    return mean_signal
+    return mean_signal, all_signals
 
 
 def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True):
@@ -392,11 +394,13 @@ def get_background_noise_value(imdata, bROIs):
     n4 = np.std(imdata[np.where(bROI4 == 255)])
     n5 = np.std(imdata[np.where(bROI5 == 255)])
 
-    noise = np.mean([n1, n2, n3, n4, n5])
+    all_noise = [n1, n2, n3, n4, n5]
+
+    noise = np.mean(all_noise)
     print('Noise in each ROI = ', [n1, n2, n3, n4, n5])
     print('Noise (total) = ', noise)
 
-    return noise
+    return noise, all_noise
 
 
 def calc_SNR(factor, mean_signal, noise):
@@ -435,7 +439,7 @@ def calc_NSNR(pixels_space, st, N_PE, TR, NSA, SNR_background, Qfactor, BW=38.4,
     NSNR = TCF * SNR_background
     print('Normalised SNR = ', NSNR.round(2))
 
-    return NSNR
+    return NSNR, BWN, VC, TCF, TCF
 
 
 def draw_spine_signal_ROIs(bin_mask, img, show_bbox=False, show_graphical=True):

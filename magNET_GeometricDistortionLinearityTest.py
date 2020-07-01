@@ -197,6 +197,7 @@ for ii in range(len(geos)):
         cv2.waitKey(0)
 
     # compute the Euclidean distance between the exterior markers
+    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.euclidean.html#scipy.spatial.distance.euclidean
     print('Pixel size =', pixels_space[0], 'x', pixels_space[1], 'mm^2')
     # horizontal lines
     hdistt = dist.euclidean(src_t, dst_t)/pixels_space[1]  # top

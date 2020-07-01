@@ -57,7 +57,7 @@ first_slice_position = []
 # detect slice range for analysis
 start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=False)
 
-show_graphical = True  # display pre-processing steps
+show_graphical = False  # display pre-processing steps
 show_graphical2 = True  # replacing erosion/dilation method with otsu threshold
 otsu_method = True  # use otsu method for image pre-processing
 
@@ -114,7 +114,7 @@ for zz in range(start_slice, last_slice+1):
         cv2.imshow('Canny Eroded', edgede.astype('float32'))
         cv2.waitKey(0)
 
-    # TODO: OTSO COMPARISON
+    # OTSU METHOD COMPARISON
     ots = np.zeros_like(phim_gray, dtype=np.uint16)  # creates zero array same dimensions as img
     ots[(phim_gray > filters.threshold_otsu(phim_gray)) == True] = 1  # Otsu threshold on image
 

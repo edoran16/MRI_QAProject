@@ -29,7 +29,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         caseS = False  # sagittal
         caseC = False  # coronal
 
-        img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE = uf.sort_import_data(directpath, geometry, pt)
+        img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt)
         # mask phantom and background
         mask, bin_mask = uf.create_2D_mask(img)  # boolean and binary masks
         # draw centre ROI
@@ -122,8 +122,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             print('Fractional Y Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =',
                   stdV.round(2), ')')
 
-
-else:  # NICL phantom - analyse all 3 geometries
+    else:  # NICL phantom - analyse all 3 geometries
         for ii in range(len(geos)):
             geometry = geos[ii]
             print('Data geometry =', geometry, '.')
@@ -224,6 +223,7 @@ else:  # NICL phantom - analyse all 3 geometries
             fractional_uniformityH, meanH, stdH = uf.calc_fUniformity(signalH, uniformity_range)
             fractional_uniformityV, meanV, stdV = uf.calc_fUniformity(signalV, uniformity_range)
 
+            # TODO: check these directions are all correct
             if caseT:
                 print('Fractional X Uniformity = ', fractional_uniformityH, '(mean =', meanH.round(2), 'std. dev. =', stdH.round(2), ')')
                 print('Fractional Y Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =', stdV.round(2), ')')
