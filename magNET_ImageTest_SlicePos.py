@@ -11,7 +11,7 @@ from skimage import filters
 
 from DICOM_test import dicom_read_and_write
 from scipy.spatial import distance as dist
-from skimage.measure import profile_line, label, regionprops
+from skimage.measure import label, regionprops
 from nibabel.viewers import OrthoSlicer3D  # << actually do use this!!
 from skimage.morphology import opening
 
@@ -47,17 +47,17 @@ pos_c = []
 idx = 0  # need this to save first slice position
 too_many_regions = 0  # to improve rod detection error
 switch_sign = False  # INITIALLY FALSE: for switching plus/minus sign in equation for measured slice position
-show_meas = False  # for showing measurements made on each slice iteration
+show_meas = True  # for showing measurements made on each slice iteration
 # for video
 img_array = []
-make_video = False  # produce 2 videos
+make_video = True  # produce 2 videos
 # for calculations
 first_slice_position = []
 
 # detect slice range for analysis
-start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=False)
+start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=True, savepng=True)
 
-show_graphical = False  # display pre-processing steps
+show_graphical = True  # display pre-processing steps
 show_graphical2 = True  # replacing erosion/dilation method with otsu threshold
 otsu_method = True  # use otsu method for image pre-processing
 
@@ -71,7 +71,7 @@ for zz in range(start_slice, last_slice+1):
     phim = imdata[zz, :, :]*phmask  # phantom image
     bgim = imdata[zz, :, :]*~phmask  # background image
 
-    ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=False)
+    ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=True)
     # use ph_centre for defining where to put measurement text on final display
 
     # display image
@@ -125,6 +125,8 @@ for zz in range(start_slice, last_slice+1):
 
     if otsu_method:
         remove_lines = (((1 - ots)*~bigbg)/np.max((1 - ots)*~bigbg)).astype('uint8')  # otsu threshold method
+        cv2.imwrite("{0}inv_otsu_slice_{1}.png".format(imagepath, zz + 1), ((1-ots) * 255).astype('uint8'))
+        cv2.imwrite("{0}remove_lines_slice_{1}.png".format(imagepath, zz + 1), (remove_lines * 255).astype('uint8'))
         # print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
     else:
         remove_lines = edgede  # edge/dilation method
@@ -213,7 +215,7 @@ for zz in range(start_slice, last_slice+1):
     for xx in range(num):
         cent[xx, :] = props[xx].centroid  # central coordinate
 
-    cent = np.round(cent).astype(int)  # TODO: resave all figures with this amendment!!
+    cent = np.round(cent).astype(int)
 
     for i in cent:
         # draw the center of the circle
