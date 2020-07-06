@@ -9,7 +9,7 @@ import numpy as np
 directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/UNI_Images/"
 
-test_object = ['FloodField', 'Spine']
+test_object = ['FloodField_HEAD', 'FloodField_BODY']
 """ for Flood Field test object - SNR TRA/SAG/COR NICL (OIL data exists as well...)
     for spine test object - SNR TRA BODY """
 phantom_type = ['_NICL', '_BODY']

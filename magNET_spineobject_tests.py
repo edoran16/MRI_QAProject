@@ -121,7 +121,7 @@ for kk in range(6):
     plt.plot(all_signals[kk])
 plt.xlabel('Voxels')
 plt.ylabel('Signal')
-plt.title('Uniformity Results: Spine Test Object')
+plt.title('Uniformity Results: FloodField_BODY Test Object')
 plt.show()
 
 

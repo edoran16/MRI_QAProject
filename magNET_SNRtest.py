@@ -12,43 +12,45 @@ import pandas as pd
 directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/SNR_Images/"
 
-test_object = ['FloodField', 'Spine']
-""" for Flood Field test object - SNR TRA/SAG/COR NICL (OIL data exists as well...)
-    for spine test object - SNR TRA BODY """
+test_object = ['FloodField_HEAD', 'FloodField_BODY']
 phantom_type = ['_NICL', '_BODY']
 geos = ['_TRA_', '_SAG_', '_COR_']
 
 # TODO: classes will be useful here I think.....
 
-for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY/SPINE
+for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/SPINE
     pt = phantom_type[jj]
-    print('SNR analysis of', pt, test_object[jj], 'test object.')
+    print('SNR analysis of', test_object[jj], 'test object.')
 
     if jj == 1:  # BODY data
         ii = 0  # only tranverse data to be analsyed
         geometry = geos[ii]
         print('Data geometry =', geometry, '.')
+
+        fullimagepath = imagepath + test_object[jj] + '/' + geometry + '/'
+        print(fullimagepath)
+
         caseT = True  # transverse
         caseS = False  # sagittal
         caseC = False  # coronal
 
         img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE = sf.sort_import_data(directpath, geometry, pt)
         # mask phantom and background
-        mask, bin_mask = sf.create_2D_mask(img)  # boolean and binary masks
+        mask, bin_mask = sf.create_2D_mask(img, show_graphical=True, imagepath=fullimagepath)  # boolean and binary masks
         # draw signal ROIs
         pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False,
-                                                                      show_graphical=True)
+                                                                      show_graphical=True, imagepath=fullimagepath)
         # get signal value
         mean_signal, all_signals = sf.get_signal_value(imdata, pc_row, pc_col, quad_centres)
         factor = 0.655  # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
         # draw background ROIs
-        bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True)
+        bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath)
         # get background/noise value
         b_noise, all_noise = sf.get_background_noise_value(imdata, bROIs)
         # SNR calculation (background method)
         SNR_background = sf.calc_SNR(factor, mean_signal, b_noise)
         # Normalised SNR calculation
-        Qfact = 1
+        Qfact = 0.84
         NSNR, BWcorr, PixelCorr, TimeCorr, TotalCorr = sf.calc_NSNR(pixels_space, st, N_PE, TR, NSA, SNR_background,
                                                                     Qfactor=Qfact)
 
@@ -90,6 +92,10 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         for ii in range(len(geos)):
             geometry = geos[ii]
             print('Data geometry =', geometry, '.')
+
+            fullimagepath = imagepath + test_object[jj] + '/' + geometry + '/'
+            print(fullimagepath)
+
             if geometry == '_TRA_':
                 caseT = True  # transverse
                 caseS = False  # sagittal
@@ -105,14 +111,14 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
 
             img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE = sf.sort_import_data(directpath, geometry, pt)
             # mask phantom and background
-            mask, bin_mask = sf.create_2D_mask(img)  # boolean and binary masks
+            mask, bin_mask = sf.create_2D_mask(img, show_graphical=True, imagepath=fullimagepath)  # boolean and binary masks
             # draw signal ROIs
-            pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graphical=True)
+            pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graphical=True, imagepath=fullimagepath)
             # get signal value
             mean_signal, all_signals = sf.get_signal_value(imdata, pc_row, pc_col, quad_centres)
             factor = 0.655  # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
             # draw background ROIs
-            bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True)
+            bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath)
             # get background/noise value
             b_noise, all_noise = sf.get_background_noise_value(imdata, bROIs)
             # SNR calculation (background method)

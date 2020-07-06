@@ -11,8 +11,9 @@ from DICOM_test import dicom_read_and_write
 from nibabel.viewers import OrthoSlicer3D
 
 
-def create_2D_mask(img, show_graphical=False):
+def create_2D_mask(img, show_graphical=False, imagepath=None):
     """ input:  img is  greyscale uint8 image data from DICOM
+        imagepath = where to save png
         output: ch is 2D mask (also grayscale!!!!)"""
 
     h = ex.equalize_hist(img)  # histogram equalisation increases contrast of image
@@ -53,6 +54,7 @@ def create_2D_mask(img, show_graphical=False):
     bin_ch = (ch / np.max(ch)).astype('uint8')  # binary mask [0, 1]
 
     if show_graphical:
+        cv2.imwrite("{0}mask.png".format(imagepath), ch)
         cv2.imshow('mask', ch)
         cv2.waitKey(0)
 
@@ -181,7 +183,7 @@ def sort_import_data(directpath, geometry, pt):
     return img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE
 
 
-def draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graphical=True):
+def draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graphical=True, imagepath=None):
     """ show_quad = False  # show quadrants for determining signal ROIs on marker image
         show_bbox = False  # show bounding box of phantom on marker image """
     # draw signal ROIs
@@ -271,6 +273,7 @@ def draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graph
     cv2.line(marker_im, (centre4[1] - 10, centre4[0] + 10), (centre4[1] + 10, centre4[0] + 10), (255, 0, 0), 1)
 
     if show_graphical:
+        cv2.imwrite("{0}drawing_signal_rois.png".format(imagepath), marker_im)
         cv2.imshow('Signal ROIs', marker_im)
         cv2.waitKey(0)
 
@@ -299,7 +302,7 @@ def get_signal_value(imdata, pc_row, pc_col, quad_centres):
     return mean_signal, all_signals
 
 
-def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True):
+def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=None):
     # Background ROIs according to MagNET protocol
     # TODO: adapt ROI function to correct ROI placement if there is an error re: 20x20 coverage of background ONLY.
     # auto detection of 4 x background ROI samples (one in each corner of background)
@@ -371,6 +374,7 @@ def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_grap
         bROI5_check = check_ROI(bROI5, bin_mask)
 
     if show_graphical:
+        cv2.imwrite("{0}drawing_bground_rois.png".format(imagepath), marker_im)
         cv2.imshow('Signal and Background ROIs', marker_im)
         cv2.waitKey(0)
 
@@ -441,6 +445,7 @@ def calc_NSNR(pixels_space, st, N_PE, TR, NSA, SNR_background, Qfactor, BW=38.4,
 
     return NSNR, BWN, VC, TCF, TCF
 
+# TODO: save image path for spine functions!
 
 def draw_spine_signal_ROIs(bin_mask, img, show_bbox=False, show_graphical=True):
     """ show_bbox = False  # show bounding box of phantom on marker image """

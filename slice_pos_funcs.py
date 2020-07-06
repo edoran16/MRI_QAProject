@@ -55,7 +55,7 @@ def create_3D_mask(imdata, dims):
     slice_dim = slice_dim[0]
     slice_dim = slice_dim[0]
     no_slices = dims[slice_dim]
-    print("Number of slices = ", no_slices)
+    # print("Number of slices = ", no_slices)
     mask3D = np.zeros_like(imdata)
 
     for imslice in np.linspace(0, no_slices - 1, no_slices, dtype=int):
@@ -182,7 +182,7 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
                 if 600 < areatemp < 800:  # TODO: replace with centre of ph coords
                     if centtemp[0] > 170:  # row below (but greater than since -y axis) 170 = bottom region of phantom
                         if 100 < centtemp[1] < 150:  # col in this range is central region of phantom
-                            print('rectangular region detected!')
+                            # print('rectangular region detected!')
                             rcntr = rcntr + 1
                             bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
                             min_row, min_col, max_row, max_col = bboxx
@@ -196,7 +196,7 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
                 if 100 < areatemp < 160:
                     if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
                         if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
-                            print('square region detected!')
+                            # print('square region detected!')
                             scntr = scntr + 1
                             bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
                             min_row, min_col, max_row, max_col = bboxx
@@ -210,7 +210,7 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
                 if 40 < areatemp < 50:
                     if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
                         if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
-                            print('inferior/superior square region detected!')
+                            # print('inferior/superior square region detected!')
                             escntr = escntr + 1
                             bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
                             min_row, min_col, max_row, max_col = bboxx
@@ -239,7 +239,7 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
     passes = np.where(pass_fail)  # passes + 1 = actual slice number
     start_slice = np.min(passes)
     last_slice = np.max(passes)
-    print('Slice position analysis on slices', start_slice + 1, 'to', last_slice + 1)
+    # print('Slice position analysis on slices', start_slice + 1, 'to', last_slice + 1)
 
     return start_slice, last_slice, pf_img_array
 
@@ -252,7 +252,7 @@ def make_video_from_img_array(img_array, dims, VideoName):
     # out = cv2.VideoWriter(VideoName, cv2.VideoWriter_fourcc(*"MJPG"), 2, dims)
     out = cv2.VideoWriter(VideoName, cv2.VideoWriter_fourcc(*"MP4V"), 2, dims)
     for i in range(len(img_array)):
-        print('Frame', i + 1, '/', len(img_array))
+        # print('Frame', i + 1, '/', len(img_array))
         out.write(img_array[i])
     out.release()
     return

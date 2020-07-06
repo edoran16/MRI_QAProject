@@ -47,22 +47,21 @@ pos_c = []
 idx = 0  # need this to save first slice position
 too_many_regions = 0  # to improve rod detection error
 switch_sign = False  # INITIALLY FALSE: for switching plus/minus sign in equation for measured slice position
-show_meas = True  # for showing measurements made on each slice iteration
+show_meas = False  # display distance measurements made on each slice pf the phantom
 # for video
 img_array = []
-make_video = True  # produce 2 videos
+make_video = False  # produce 2 videos
 # for calculations
 first_slice_position = []
 
 # detect slice range for analysis
-start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=True, savepng=True)
+start_slice, last_slice, pf_img_array = spf.find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=False)
 
-show_graphical = True  # display pre-processing steps
-show_graphical2 = True  # replacing erosion/dilation method with otsu threshold
+show_graphical = False  # display pre-processing steps
+show_graphical2 = False  # display replacement of erosion/dilation method with otsu threshold
 otsu_method = True  # use otsu method for image pre-processing
 
 for zz in range(start_slice, last_slice+1):
-    print(zz)
     zz = int(zz)
     print('Actual Slice Number ', zz+1)
     print('Relevant Slice Number', idx+1)
@@ -71,7 +70,7 @@ for zz in range(start_slice, last_slice+1):
     phim = imdata[zz, :, :]*phmask  # phantom image
     bgim = imdata[zz, :, :]*~phmask  # background image
 
-    ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=True)
+    ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=False)
     # use ph_centre for defining where to put measurement text on final display
 
     # display image
@@ -130,7 +129,7 @@ for zz in range(start_slice, last_slice+1):
         # print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
     else:
         remove_lines = edgede  # edge/dilation method
-        print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
+        # print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
 
     lines_im = phmask.copy()
     # LINE DETECTION
@@ -162,11 +161,10 @@ for zz in range(start_slice, last_slice+1):
             cv2.waitKey(0)
 
     label_img, num = label(label_this, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
-    print('Number of regions detected (should be 6!!!) = ', num)
 
     if num > 6:
         too_many_regions = too_many_regions + 1
-        print('Too many regions detected! =O')
+        print('Too many regions detected! (>6))')
 
         label_this2 = label_this.copy()
         minLineLength = 2
@@ -191,7 +189,6 @@ for zz in range(start_slice, last_slice+1):
             cv2.waitKey(0)
 
         label_img2, num2 = label(label_this3, connectivity=phim_gray.ndim, return_num=True)  # labels the mask
-        print('Number of regions detected (should be 6!!!) = ', num2)
 
         if num2 > 6:
             ValueError('Too many regions detected! =(')
@@ -339,7 +336,6 @@ for zz in range(start_slice, last_slice+1):
     CFall = np.divide(RDA, RDM)
     CF = np.mean(CFall)  # average of 4 measurements
 
-    print(pixeldims)
     if pixeldims[0] == pixeldims[1]:
         pixeldim = pixeldims[0]
     else:
@@ -386,33 +382,52 @@ for zz in range(start_slice, last_slice+1):
 slices_vec = np.linspace(start_slice+1, last_slice+1, idx)
 
 plt.figure()
-plt.subplot(131)
+# plt.subplot(131)
 plt.plot(slices_vec, distance)
 plt.xlim([1, no_slices])
-plt.title('Slice Number vs. Distance')
-plt.subplot(132)
+plt.xlabel('Slice Number')
+plt.ylabel('Measured Distance (mm)')
+# plt.title('Slice Number vs. Distance')
+plt.show()
+
+plt.figure()
+# plt.subplot(132)
 plt.plot(slices_vec, pos_m)
 plt.plot(slices_vec, pos_c)
 plt.xlim([1, no_slices])
+plt.xlabel('Slice Number')
+plt.ylabel('Position (mm)')
 plt.legend(['Measured', 'Calculated'])
-plt.title('Slice Number vs. Position')
-plt.subplot(133)
+# plt.title('Slice Number vs. Distance')
+plt.show()
+
+plt.figure()
+# plt.subplot(133)
 plt.plot(slices_vec, error)
 plt.plot(slices_vec, np.repeat(-2, idx), 'r')
 plt.plot(slices_vec, np.repeat(2, idx), 'r')
+plt.plot(slices_vec, np.repeat(0, idx), 'r--')
 plt.xlim([1, no_slices])
-plt.title('Slice Number vs. Slice Position Error')
+plt.xlabel('Slice Number')
+plt.ylabel('Slice Position Error (mm)')
+plt.legend(['Error', 'Pass/Fail Region'], loc='upper right', bbox_to_anchor=(1, 0.9), fontsize='x-small')
+# plt.title('Slice Number vs. Slice Position Error')
 plt.show()
 
 # mean error
 mean_error = np.mean(error)
-print('The mean slice position error = ', mean_error.round(2))  # -0.73
 # standard deviation error
 stdev_error = np.std(error)
-print('The standard deviation of the error = ', stdev_error.round(2))  # 0.31
 # range of error
 range_error = np.max(error) - np.min(error)  # 1.52 range from -1.01 to 0.51
-print('The range of the slice position error is = ', range_error.round(2), 'ranging from', (np.min(error)).round(2), 'to', (np.max(error)).round(2))
+
+auto_metrics = {'Mean Error': mean_error, 'StDev Error': stdev_error, 'Range Error': range_error}
+
+auto_df = pd.Series(auto_metrics)
+auto_df = auto_df.to_frame()
+
+print('AUTO SLICE POSITION ERROR RESULTS')
+print(auto_df)
 
 if make_video:
     # create video of pass/fail assignment
@@ -422,6 +437,13 @@ if make_video:
 
 # Comparison with MagNET Report
 df = pd.read_excel(r'Sola_INS_07_05_19.xls', sheet_name='Slice Position Sola (2)')
+
+sola_metrics = df.iloc[34:, -2:]
+sola_metrics = sola_metrics.set_index('Unnamed: 6')
+sola_metrics = sola_metrics.rename(columns={"Unnamed: 7": "0"})
+del sola_metrics.index.name
+print('SOLA SLICE POSITION ERROR RESULTS')
+print(sola_metrics)
 
 sola_distance = df.Position  # slice 7 -> 36 (I analyse slice 8 to 36)
 sola_distance = sola_distance[1:30]
@@ -435,37 +457,53 @@ sola_pos_c = sola_pos_c[1:30]
 sola_error = df['Unnamed: 7']
 sola_error = sola_error[1:30]
 
+sola_metrics = []# mean/SD/range
+
 plt.figure()
-plt.subplot(221)
+# plt.subplot(221)
 plt.plot(slices_vec, distance)
 plt.plot(slices_vec, sola_distance)
 plt.xlim([1, no_slices])
-plt.legend(['Python', 'Macro'])
-plt.title('Measured Rod Distance')
+plt.xlabel('Slice Number')
+plt.ylabel('Measured Distance (mm)')
+plt.legend(['Python', 'Manual'])
+# plt.title('Measured Rod Distance')
+plt.show()
 
-plt.subplot(222)
+plt.figure()
+# plt.subplot(222)
 plt.plot(slices_vec, pos_m)
 plt.plot(slices_vec, sola_pos_m)
 plt.xlim([1, no_slices])
-plt.legend(['Python', 'Macro'])
-plt.title('Measured Position')
+plt.xlabel('Slice Number')
+plt.ylabel('Measured Position (mm)')
+plt.legend(['Python', 'Manual'])
+# plt.title('Measured Position')
+plt.show()
 
-plt.subplot(223)
+plt.figure()
+# plt.subplot(223)
 plt.plot(slices_vec, pos_c)
 plt.plot(slices_vec, sola_pos_c)
 plt.xlim([1, no_slices])
-plt.legend(['Python', 'Macro'])
-plt.title('Calculated Position')
+plt.xlabel('Slice Number')
+plt.ylabel('Calculated Position (mm)')
+plt.legend(['Python', 'Manual'])
+# plt.title('Calculated Position')
+plt.show()
 
-plt.subplot(224)
+plt.figure()
+# plt.subplot(224)
 plt.plot(slices_vec, error)
 plt.plot(slices_vec, sola_error)
 plt.plot(slices_vec, np.repeat(-2, len(slices_vec)), 'r')
 plt.plot(slices_vec, np.repeat(2, len(slices_vec)), 'r')
 plt.plot(slices_vec, np.repeat(0, len(slices_vec)), 'r--')
 plt.xlim([1, no_slices])
-plt.legend(['Python', 'Macro', 'Pass/Fail Region'], loc='upper right', bbox_to_anchor=(1, 0.9), fontsize='x-small')
-plt.title('Position Error')
+plt.xlabel('Slice Number')
+plt.ylabel('Slice Position Error (mm)')
+plt.legend(['Python', 'Manual', 'Pass/Fail Region'], loc='upper right', bbox_to_anchor=(1, 0.9), fontsize='x-small')
+# plt.title('Position Error')
 plt.show()
 
 
