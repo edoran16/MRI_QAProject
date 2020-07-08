@@ -357,6 +357,8 @@ for dd in np.linspace(0, len(ERF)-2, len(ERF)-1):
     diff = np.abs(ERF[int(dd+1)] - ERF[int(dd)])
     diff_output.append(diff)
 
+sys.exit()
+
 diff_zeroed = diff_output - np.min(diff_output)  # zero the LSF
 diff_norm = diff_zeroed/np.max(diff_zeroed)  # normalise LSF
 LSF = diff_norm
@@ -370,10 +372,12 @@ plt.xlabel('Position (mm)')
 plt.title('Line Spread Function')
 
 """FOURIER TRANSFORM OF LSF = MTF"""
-MTF = np.fft.fftshift(np.fft.fft(LSF))  # shifted fourier transform of LSF
-# MTF = np.fft.fft(LSF)  # fourier transform of LSF
-MTF = np.abs(MTF)  # absolute value norm of the FT
-MTF = MTF/np.max(MTF)  # normalised MTF
+MTF = np.fft.fft(LSF)  # fourier transform of LSF
+# MTF = np.fft.fftshift(np.fft.fft(LSF))  # shifted fourier transform of LSF
+# MTF = np.abs(np.fft.fftshift(np.fft.fft(LSF)))  # absolute value norm of the FT
+# MTF = np.abs(np.fft.fftshift(np.fft.fft(LSF))**2)  # squared shifted abs
+# MTF = np.log(np.abs(np.fft.fftshift(np.fft.fft(LSF))**2))  # log of squared shifted abs
+# MTF = MTF/np.max(MTF)  # normalised MTF
 
 # sampling_interval = len(output)/interp_length
 FOV = 250  # FOV specified in MagNET protocol
@@ -383,11 +387,7 @@ sampling_interval = FOV/matrix_size
 no_of_pixels = voxels + 1
 spatial_res = 1/(no_of_pixels * sampling_interval)
 spatial_res = spatial_res[::-1]
-print(spatial_res.shape)
-
 spatial_res_vec = np.linspace(np.min(spatial_res), np.max(spatial_res), len(MTF))
-print(spatial_res)
-print(spatial_res_vec)
 
 # MTF
 plt.figure(2)

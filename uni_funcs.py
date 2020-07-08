@@ -79,7 +79,7 @@ def f_uni_meta(dicomfile):
     return pixels_space
 
 
-def sort_import_data(directpath, geometry, pt):
+def sort_import_data(directpath, geometry, pt, show_graphical=False, imagepath=None):
     with os.scandir(directpath) as the_folders:
         for folder in the_folders:
             fname = folder.name
@@ -106,8 +106,10 @@ def sort_import_data(directpath, geometry, pt):
 
                                 img = ((imdata / np.max(imdata)) * 255).astype('uint8')  # grayscale
 
-                                cv2.imshow('dicom imdata', img)
-                                cv2.waitKey(0)
+                                if show_graphical:
+                                    cv2.imwrite("{0}flood_image.png".format(imagepath), img)
+                                    cv2.imshow('dicom imdata', img)
+                                    cv2.waitKey(0)
 
                             except ValueError:
                                 print('DATA INPUT ERROR: this is 3D image data')
@@ -117,7 +119,7 @@ def sort_import_data(directpath, geometry, pt):
     return img, imdata, pixels_space
 
 
-def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True):
+def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=None):
     # ACCOUNT FOR MISSING SIGNAL AT TOP OF PHANTOM (TRANSVERSE VIEW ONLY).
     if caseT:
         oi = np.zeros_like(img, dtype=np.uint8)  # creates zero array same dimensions as img
@@ -175,6 +177,7 @@ def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True):
         sys.exit()
 
     if show_graphical:
+        cv2.imwrite("{0}centre_ROI_image.png".format(imagepath), marker_im)
         cv2.imshow('Signal ROIs', marker_im)
         cv2.waitKey(0)
 
@@ -196,7 +199,7 @@ def get_signal_value(imdata, pc_r, pc_c):
     return signal0
 
 
-def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV, show_graphical=False):
+def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV, show_graphical=False, imagepath=None):
     # src and dst are tuples of (x, y) i.e. (column, row)
     # draw line profile across centre line of phantom
     outputs = []
@@ -234,6 +237,7 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
             improfile = display_profile_line(improfile, src2, dst2, pc_row, pc_col, dist80, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
 
         if show_graphical:
+            cv2.imwrite("{0}profile_line_image.png".format(imagepath), improfile)
             cv2.imshow('Individual Profile Line', improfile)
             cv2.waitKey(0)
 
@@ -254,7 +258,7 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
     return mean_output
 
 
-def display_profile_line(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV, linecolour, show_graphical=False):
+def display_profile_line(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV, linecolour, show_graphical=False, imagepath=None):
     # display profile line on phantom: from source code of profile_line function
     src_col, src_row = np.asarray(src, dtype=float)  # src = (x, y) = (col, row)
     dst_col, dst_row = np.asarray(dst, dtype=float)
@@ -298,6 +302,7 @@ def display_profile_line(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV,
 
     # plot sampled line on phantom to visualise where output comes from
     if show_graphical:
+        cv2.imwrite("{0}just_another_profile_line_image.png".format(imagepath), imdata)
         cv2.imshow('Individual Profile Line!!', imdata)
         cv2.waitKey(0)
 

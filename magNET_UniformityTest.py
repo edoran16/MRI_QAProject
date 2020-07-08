@@ -1,8 +1,5 @@
-import sys
 import uni_funcs as uf
-import cv2
-
-from skimage.measure import profile_line, label, regionprops
+import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -17,6 +14,21 @@ geos = ['_TRA_', '_SAG_', '_COR_']
 
 # TODO: classes will be useful here I think..... change as per SNR test
 
+# TODO: make sre all cv2 outputs are saved. Save all plt plots manually. - make graphs look pretty first
+
+# Fractional uniformity/mean uniformity/stdev uniformity vectors for 'append' function
+fx = []
+fy = []
+fz = []
+mx = []
+my = []
+mz = []
+sx = []
+sy = []
+sz = []
+
+print(fx, fy, fz)
+
 for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY/SPINE
     pt = phantom_type[jj]
     print('Fractional Uniformity analysis of', pt, test_object[jj], 'test object.')
@@ -29,11 +41,14 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         caseS = False  # sagittal
         caseC = False  # coronal
 
-        img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt)
+        fullimagepath = imagepath + test_object[jj] + '/' + geometry + '/'
+        print(fullimagepath)
+
+        img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt, show_graphical=True, imagepath=fullimagepath)
         # mask phantom and background
         mask, bin_mask = uf.create_2D_mask(img)  # boolean and binary masks
         # draw centre ROI
-        pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=True)
+        pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=fullimagepath)
 
         # get mean signal value in ROI
         mean_signal = uf.get_signal_value(imdata, pc_row, pc_col)
@@ -51,12 +66,12 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         srcH = (0, pc_row)  # LHS starting point (x, y) == (col, row)
         dstH = (dims[1] - 1, pc_row)  # RHS finish point
         all_signalH = uf.obtain_uniformity_profile(imdata, srcH, dstH, pc_row, pc_col, dist80mm, caseH=True,
-                                                   caseV=False, show_graphical=False)
+                                                   caseV=False, show_graphical=True, imagepath=fullimagepath)
         """ plot vertical profile """
         srcV = (pc_col, 0)  # starting point
         dstV = (pc_col, dims[0] - 1)  # finish point
         all_signalV = uf.obtain_uniformity_profile(imdata, srcV, dstV, pc_row, pc_col, dist80mm, caseH=False,
-                                                   caseV=True, show_graphical=False)
+                                                   caseV=True, show_graphical=True, imagepath=fullimagepath)
 
         """get 160 mm of horizontal profile"""
         signalH = all_signalH[pc_col - dist80mm:pc_col + dist80mm]
@@ -121,6 +136,15 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
                   stdH.round(2), ')')
             print('Fractional Y Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =',
                   stdV.round(2), ')')
+            fx = np.append(fx, fractional_uniformityH)
+            fy = np.append(fy, fractional_uniformityV)
+            fz = np.append(fz, np.NaN)
+            mx = np.append(mx, meanH)
+            my = np.append(my, meanV)
+            mz = np.append(mz, np.NaN)
+            sx = np.append(sx, stdH)
+            sy = np.append(sy, stdV)
+            sz = np.append(sz, np.NaN)
 
     else:  # NICL phantom - analyse all 3 geometries
         for ii in range(len(geos)):
@@ -139,11 +163,14 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
                 caseS = False  # sagittal
                 caseC = True  # coronal
 
-            img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt)
+            fullimagepath = imagepath + test_object[jj] + '/' + geometry + '/'
+            print(fullimagepath)
+
+            img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt, show_graphical=True, imagepath=fullimagepath)
             # mask phantom and background
             mask, bin_mask = uf.create_2D_mask(img)  # boolean and binary masks
             # draw centre ROI
-            pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=True)
+            pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=fullimagepath)
 
             # get mean signal value in ROI
             mean_signal = uf.get_signal_value(imdata, pc_row, pc_col)
@@ -160,11 +187,13 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             """plot horizontal profile"""
             srcH = (0, pc_row)  # LHS starting point (x, y) == (col, row)
             dstH = (dims[1]-1, pc_row)  # RHS finish point
-            all_signalH = uf.obtain_uniformity_profile(imdata, srcH, dstH, pc_row, pc_col, dist80mm, caseH=True, caseV=False, show_graphical=False)
+            all_signalH = uf.obtain_uniformity_profile(imdata, srcH, dstH, pc_row, pc_col, dist80mm, caseH=True,
+                                                       caseV=False, show_graphical=True, imagepath=fullimagepath)
             """ plot vertical profile """
             srcV = (pc_col, 0)  # starting point
             dstV = (pc_col, dims[0]-1)  # finish point
-            all_signalV = uf.obtain_uniformity_profile(imdata, srcV, dstV, pc_row, pc_col, dist80mm, caseH=False, caseV=True, show_graphical=False)
+            all_signalV = uf.obtain_uniformity_profile(imdata, srcV, dstV, pc_row, pc_col, dist80mm, caseH=False,
+                                                       caseV=True, show_graphical=True, imagepath=fullimagepath)
 
             """get 160 mm of horizontal profile"""
             signalH = all_signalH[pc_col - dist80mm:pc_col + dist80mm]
@@ -227,14 +256,77 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             if caseT:
                 print('Fractional X Uniformity = ', fractional_uniformityH, '(mean =', meanH.round(2), 'std. dev. =', stdH.round(2), ')')
                 print('Fractional Y Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =', stdV.round(2), ')')
+                fx = np.append(fx, fractional_uniformityH)
+                fy = np.append(fy, fractional_uniformityV)
+                fz = np.append(fz, np.NaN)
+                mx = np.append(mx, meanH)
+                my = np.append(my, meanV)
+                mz = np.append(mz, np.NaN)
+                sx = np.append(sx, stdH)
+                sy = np.append(sy, stdV)
+                sz = np.append(sz, np.NaN)
 
             if caseS:
                 print('Fractional Y Uniformity = ', fractional_uniformityH, '(mean =', meanH.round(2), 'std. dev. =', stdH.round(2), ')')
                 print('Fractional Z Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =', stdV.round(2), ')')
+                fx = np.append(fx, np.NaN)
+                fy = np.append(fy, fractional_uniformityH)
+                fz = np.append(fz, fractional_uniformityV)
+                mx = np.append(mx, np.NaN)
+                my = np.append(my, meanH)
+                mz = np.append(mz, meanV)
+                sx = np.append(sx, np.NaN)
+                sy = np.append(sy, stdH)
+                sz = np.append(sz, stdV)
 
             if caseC:
                 print('Fractional X Uniformity = ', fractional_uniformityH, '(mean =', meanH.round(2), 'std. dev. =', stdH.round(2), ')')
                 print('Fractional Z Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =', stdV.round(2), ')')
+                fx = np.append(fx, fractional_uniformityH)
+                fy = np.append(fy, np.NaN)
+                fz = np.append(fz, fractional_uniformityV)
+                mx = np.append(mx, meanH)
+                my = np.append(my, np.NaN)
+                mz = np.append(mz, meanV)
+                sx = np.append(sx, stdH)
+                sy = np.append(sy, np.NaN)
+                sz = np.append(sz, stdV)
+
+
+# create Pandas data frame with auto results
+auto_data = {'Geometry': ['Transverse', 'Sagittal', 'Coronal', 'Transverse'],
+             'Coil': ['Head', 'Head', 'Head', 'Body'],
+             'Fractional Uniformity X': fx, 'Mean Uniformity X': mx, 'StDev Uniformity X': sx,
+             'Fractional Uniformity Y': fy, 'Mean Uniformity Y': my, 'StDev Uniformity Y': sy,
+             'Fractional Uniformity Z': fz, 'Mean Uniformity Z': mz, 'StDev Uniformity Z': sz}
+
+auto_df = pd.DataFrame(auto_data, columns=['Geometry', 'Coil', 'Fractional Uniformity X', 'Fractional Uniformity Y',
+                                           'Fractional Uniformity Z', 'Mean Uniformity X', 'Mean Uniformity Y',
+                                           'Mean Uniformity Z', 'StDev Uniformity X', 'StDev Uniformity Y', 'StDev Uniformity X'])
+
+print(auto_df.head())
+
+# import Excel data with macro results
+excel_head_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=1, sheet_name='Uniformity Head-neck-Ni_Sola')
+excel_head_df = excel_head_df.iloc[0:6, 0:15]
+excel_head_df = excel_head_df.dropna(how='all')  # get rid of NaN rows
+excel_tra_head_df = excel_head_df.iloc[:, 0:2]
+excel_sag_head_df = excel_head_df.iloc[:, 7:9]
+excel_cor_head_df = excel_head_df.iloc[:, 13:15]
+
+frames = [excel_tra_head_df, excel_sag_head_df, excel_cor_head_df]
+
+manual_df_head_results = pd.concat(frames, ignore_index=True, sort=False, axis=1)
+manual_df_head_results.columns = ['(MANUAL) TRA Metric', 'TRA Result',
+                                  'SAG Metric', 'SAG Result',
+                                  'COR Metric', 'COR Result']
+print(manual_df_head_results)
+
+excel_body_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=1, sheet_name='Uniformity Body Sola')
+excel_body_df = excel_body_df.iloc[0:6, 0:3]
+excel_body_df = excel_body_df.dropna(how='all')
+excel_body_df.columns = ['MANUAL TRA', 'BODY', 'RESULTS']
+print(excel_body_df)
 
 
 
