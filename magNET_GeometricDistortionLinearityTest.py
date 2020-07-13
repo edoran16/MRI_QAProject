@@ -1,9 +1,10 @@
 import geoDL_funcs as gf
 import sys
+import pandas as pd
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.stats import variation
 from scipy.spatial import distance as dist
 from skimage import filters
 from skimage.measure import label, regionprops
@@ -30,6 +31,9 @@ for ii in range(len(geos)):
         caseS = False  # sagittal
         caseC = True  # coronal
 
+    fullimagepath = imagepath + 'D_and_L/' + geometry[1:] + '/'
+    print(fullimagepath)
+
     img, imdata, matrix_size, st, pixels_space = gf.sort_import_data(directpath, geometry)
 
     # FROM SLICE POS
@@ -49,14 +53,14 @@ for ii in range(len(geos)):
 
     # display phantom image
     if show_graphical:
-        # cv2.imwrite("{0}phantom_image_slice_{1}.png".format(imagepath, zz+1), ((phim/np.max(phim))*255).astype('uint8'))
+        cv2.imwrite("{0}geo_phantom_image.png".format(fullimagepath), imdata)
         cv2.imshow('phantom image', phim_gray)
         cv2.waitKey(0)
 
     bigbg = cv2.dilate((255-(bin_mask*255)).astype('uint8'), None, iterations=4)  # dilate background mask
 
     if show_graphical:
-        # cv2.imwrite("{0}dilated_background_slice_{1}.png".format(imagepath, zz + 1), bigbg)
+        cv2.imwrite("{0}dilated_background_image.png".format(fullimagepath), bigbg)
         cv2.imshow('Dilated Background', bigbg)
         cv2.waitKey(0)
 
@@ -65,11 +69,13 @@ for ii in range(len(geos)):
     ots[(phim_gray > filters.threshold_otsu(phim_gray)) == True] = 1  # Otsu threshold on image
 
     if show_graphical:
-        # cv2.imwrite("{0}otsuthresh_slice_{1}.png".format(imagepath, zz + 1), (ots*255).astype('uint8'))
+        cv2.imwrite("{0}otsu_thresh_image.png".format(fullimagepath), ots.astype('float32'))
         cv2.imshow('OTS', ots.astype('float32'))
         cv2.waitKey(0)
+        cv2.imwrite("{0}inv_otsu_thresh_image.png".format(fullimagepath), (1-ots).astype('float32'))
         cv2.imshow(' INVERSE OTS', (1-ots).astype('float32'))
         cv2.waitKey(0)
+        cv2.imwrite("{0}inv_otsu_eroded_image.png".format(fullimagepath), ((1 - ots)*~bigbg).astype('float32'))
         cv2.imshow('INVERSE OTS "ERODED"', ((1 - ots)*~bigbg).astype('float32'))
         cv2.waitKey(0)
 
@@ -98,7 +104,7 @@ for ii in range(len(geos)):
         cv2.circle(marker_im, (i[1], i[0]), 1, (0, 0, 255), 1)
 
     if show_graphical:
-        # cv2.imwrite("{0}marker_image_slice_{1}.png".format(imagepath, zz + 1), marker_im.astype('uint8'))
+        cv2.imwrite("{0}marker_image.png".format(fullimagepath), marker_im.astype('uint8'))
         cv2.imshow('marker image', marker_im.astype('uint8'))
         cv2.waitKey(0)
 
@@ -181,6 +187,7 @@ for ii in range(len(geos)):
     cv2.line(hmarker_im, src_b, dst_b, (0, 0, 255), 1)  # bottom line
 
     if show_graphical:
+        cv2.imwrite("{0}horiz_marker_image.png".format(fullimagepath), hmarker_im.astype('uint8'))
         cv2.imshow('horiz. marker image', hmarker_im.astype('uint8'))
         cv2.waitKey(0)
 
@@ -193,6 +200,7 @@ for ii in range(len(geos)):
     cv2.line(vmarker_im, dst_t, dst_b, (0, 255, 0), 1)  # right line
 
     if show_graphical:
+        cv2.imwrite("{0}vert_marker_image.png".format(fullimagepath), vmarker_im.astype('uint8'))
         cv2.imshow('vert. marker image', vmarker_im.astype('uint8'))
         cv2.waitKey(0)
 
@@ -219,7 +227,7 @@ for ii in range(len(geos)):
 
     final_markers = cv2.vconcat((hmarker_im.astype('uint8'), vmarker_im.astype('uint8')))
 
-    # cv2.imwrite("{0}final_measures_slice_{1}.png".format(imagepath, zz + 1), final_markers)
+    cv2.imwrite("{0}final_measurements.png".format(fullimagepath), final_markers)
     cv2.imshow("Measurements", final_markers)
     cv2.waitKey(0)
 
@@ -269,12 +277,59 @@ for ii in range(len(geos)):
                 'Vertical Errors'], ncol=2)
     plt.xlim([-width, N-width])
     plt.ylim([-2, 2])
-
+    plt.savefig(fullimagepath + 'geometric_error.png', orientation='landscape', transparent=True,
+                bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
-    # TODO: compare to Excel sheet distortion and linearity data
+    # automated results
+    # create Pandas data frame with auto results
+    auto_data_horiz = {'Line': ['1-3', '4-6', '7-9'],
+                 'Distance': [hdistt, hdistm, hdistb],
+                 'Error': errorsH,
+                 'Result': pass_fail[0:3]}
+
+    auto_df_horiz = pd.DataFrame(auto_data_horiz, columns=['Line', 'Distance', 'Error', 'Result'])
+    # vertical metrics
+    auto_data_vert = {'Line': ['1-7', '2-8', '3-9'],
+                       'Distance': [vdistl, vdistc, vdistr],
+                       'Error': errorsV,
+                       'Result': pass_fail[-3:]}
+
+    auto_df_vert = pd.DataFrame(auto_data_vert, columns=['Line', 'Distance', 'Error', 'Result'])
+    # summary metrics
+    auto_distance_summary = {'Geometry': [geometry[-3:], geometry[-3:]],
+                             'Direction': ['H', 'V'],
+                 'Mean Distance': [np.mean([hdistt, hdistm, hdistb]), np.mean([vdistl, vdistc, vdistr])],
+                 'StDev Distance': [np.std([hdistt, hdistm, hdistb]), np.std([vdistl, vdistc, vdistr])],
+                 'CoV Distance': [variation([hdistt, hdistm, hdistb])*100, variation([vdistl, vdistc, vdistr])*100]}
+
+    auto_distance_summary_df = pd.DataFrame(auto_distance_summary,
+                                            columns=['Geometry', 'Direction', 'Mean Distance',
+                                                     'StDev Distance', 'CoV Distance'])
+
+    print('_.__AUTOMATED RESULTS__._')
+    print(auto_df_horiz)
+    print(auto_df_vert)
+    print(auto_distance_summary_df)
+
+    # import Excel data with macro results
+    excel_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=2, sheet_name='Linearity and Distortion Sola')
+    excel_df = excel_df.dropna(how='all')  # get rid of NaN rows
+    if caseT:
+        excel_df = excel_df.iloc[:, 0:4]
+    if caseS:
+        excel_df = excel_df.iloc[:, 5:9]
+    if caseC:
+        excel_df = excel_df.iloc[:, 10:14]
+
+    print('_.__MANUAL RESULTS__._')
+    print(excel_df)
 
     """ Slice Width """
+
+    fullimagepath = imagepath + 'SW/' + geometry[1:] + '/'
+    print(fullimagepath)
+
     # plates are located in-between top/middle, middle/bottom rods
     # line profile through plate 1
     src_1_x = src_t[0]
@@ -308,8 +363,9 @@ for ii in range(len(geos)):
 
     cv2.line(swmarker_im, (src_1_x, src_1_y), (dst_1_x, dst_1_y), (0, 0, 255), 1)  # plate 1 profile
     cv2.line(swmarker_im, (src_2_x, src_2_y), (dst_2_x, dst_2_y), (0, 0, 255), 1)  # plate 2 profile
-    show_graphical = True
+    show_graphical = False
     if show_graphical:
+        cv2.imwrite("{0}slice_width_measurements.png".format(fullimagepath), swmarker_im)
         cv2.imshow("Slice Width Measurements", swmarker_im)
         cv2.waitKey(0)
 
@@ -324,35 +380,74 @@ for ii in range(len(geos)):
     print(caseH, caseV)
 
     p1_profile = gf.obtain_profile(imdata, (src_1_x, src_1_y), (dst_1_x, dst_1_y), caseH, caseV,
-                                   show_graphical=True)
+                                   show_graphical=False, imagepath=fullimagepath + 'plate1/')
 
     p2_profile = gf.obtain_profile(imdata, (src_2_x, src_2_y), (dst_2_x, dst_2_y), caseH, caseV,
-                                   show_graphical=True)
+                                   show_graphical=False, imagepath=fullimagepath + 'plate2/')
 
-    show_graphical = True
+    show_graphical = False
 
     if show_graphical:
         plt.plot(p1_profile)
         plt.title('Original Plate 1 Profile')
+        plt.savefig(fullimagepath + 'plate1/orig_plate1_profile.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
         plt.plot(p2_profile)
         plt.title('Original Plate 2 Profile')
+        plt.savefig(fullimagepath + 'plate2/orig_plate2_profile.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
-    p1_slice_width = gf.slice_width_calc(p1_profile, pixels_space, st, show_graphical=True)
-    p2_slice_width = gf.slice_width_calc(p2_profile, pixels_space, st, show_graphical=True)
+    p1_slice_width = gf.slice_width_calc(p1_profile, pixels_space, st, show_graphical=False, imagepath=fullimagepath + 'plate1/')
+    p2_slice_width = gf.slice_width_calc(p2_profile, pixels_space, st, show_graphical=False, imagepath=fullimagepath + 'plate2/')
 
     upperlim = st+(0.1*st)
     lowerlim = st-(0.1*st)
 
     if upperlim < p1_slice_width < lowerlim:
         print('Slice Width for Plate 1 (', p1_slice_width, ') is OUTWITH tolerance limits.')
+        sw_pf1 = 'FAIL'
     else:
         print('Slice Width for Plate 1 (', p1_slice_width, ') is within tolerance limits.')
+        sw_pf1 = 'PASS'
     if upperlim < p2_slice_width < lowerlim:
         print('Slice Width for Plate 2 (', p2_slice_width, ') is OUTWITH tolerance limits.')
+        sw_pf2 = 'FAIL'
     else:
         print('Slice Width for Plate 2 (', p2_slice_width, ') is within tolerance limits.')
+        sw_pf2 = 'PASS'
 
-    # todo: compare with excel slice width data
+    # automated results
+    # create Pandas data frame with auto results
+    auto_data = {'Plate': ['1', '2'], 'Automated Slice Width': [p1_slice_width, p2_slice_width],
+                       'Result': [sw_pf1, sw_pf2]}
+
+    auto_df = pd.DataFrame(auto_data, columns=['Plate', 'Automated Slice Width', 'Result'])
+
+    print('_.__AUTOMATED RESULTS__._')
+    print(auto_df)
+
+    # import Excel data with macro results
+    if caseT:
+        excel_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=2, sheet_name='Slice Width TRA Sola')
+        excel_df = excel_df.dropna(how='all')  # get rid of NaN rows
+        excel_df1 = excel_df.iloc[0:2, 6:8]
+        excel_df2 = excel_df.iloc[0:2, 19:21]
+    if caseS:
+        excel_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=2, sheet_name='Slice Width SAG Sola')
+        excel_df = excel_df.dropna(how='all')  # get rid of NaN rows
+        excel_df1 = excel_df.iloc[0:2, 6:8]
+        excel_df2 = excel_df.iloc[0:2, 19:21]
+    if caseC:
+        excel_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=2, sheet_name='Slice Width COR Sola')
+        excel_df = excel_df.dropna(how='all')  # get rid of NaN rows
+        excel_df1 = excel_df.iloc[0:2, 6:8]
+        excel_df2 = excel_df.iloc[0:2, 20:22]
+
+    print('_.__MANUAL RESULTS__._')
+    print('_.__PLATE 1__._')
+    print(excel_df1)
+    print('_.__PLATE 2__._')
+    print(excel_df2)
 

@@ -14,8 +14,6 @@ geos = ['_TRA_', '_SAG_', '_COR_']
 
 # TODO: classes will be useful here I think..... change as per SNR test
 
-# TODO: make sre all cv2 outputs are saved. Save all plt plots manually. - make graphs look pretty first
-
 # Fractional uniformity/mean uniformity/stdev uniformity vectors for 'append' function
 fx = []
 fy = []
@@ -44,11 +42,11 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         fullimagepath = imagepath + test_object[jj] + '/' + geometry + '/'
         print(fullimagepath)
 
-        img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt, show_graphical=True, imagepath=fullimagepath)
+        img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt, show_graphical=False, imagepath=fullimagepath)
         # mask phantom and background
         mask, bin_mask = uf.create_2D_mask(img)  # boolean and binary masks
         # draw centre ROI
-        pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=fullimagepath)
+        pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=False, imagepath=fullimagepath)
 
         # get mean signal value in ROI
         mean_signal = uf.get_signal_value(imdata, pc_row, pc_col)
@@ -66,12 +64,12 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         srcH = (0, pc_row)  # LHS starting point (x, y) == (col, row)
         dstH = (dims[1] - 1, pc_row)  # RHS finish point
         all_signalH = uf.obtain_uniformity_profile(imdata, srcH, dstH, pc_row, pc_col, dist80mm, caseH=True,
-                                                   caseV=False, show_graphical=True, imagepath=fullimagepath)
+                                                   caseV=False, show_graphical=False, imagepath=fullimagepath)
         """ plot vertical profile """
         srcV = (pc_col, 0)  # starting point
         dstV = (pc_col, dims[0] - 1)  # finish point
         all_signalV = uf.obtain_uniformity_profile(imdata, srcV, dstV, pc_row, pc_col, dist80mm, caseH=False,
-                                                   caseV=True, show_graphical=True, imagepath=fullimagepath)
+                                                   caseV=True, show_graphical=False, imagepath=fullimagepath)
 
         """get 160 mm of horizontal profile"""
         signalH = all_signalH[pc_col - dist80mm:pc_col + dist80mm]
@@ -85,46 +83,54 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         if 161 < (len(signalV) * pixels_space[0]) < 159:
             ValueError('Length of Profile is not 160 mm as specified in MagNET protocol.')
 
-        plt.figure()
+        vlinemaxh = [np.max(all_signalH), uniformity_range[1]]
+        vlinemaxh = np.max(vlinemaxh)
+
+        vlinemaxv = [np.max(all_signalV), uniformity_range[1]]
+        vlinemaxv = np.max(vlinemaxv)
+
+        plt.figure(figsize=[20, 6])  # width, height in inches
         plt.subplot(121)
         plt.plot(all_signalH, 'b')
-        plt.plot(np.repeat(pc_col, 5), np.linspace(0, np.max(all_signalH), 5), 'y-.')
-        plt.plot(np.repeat(pc_col - dist80mm, 5), np.linspace(0, np.max(all_signalH), 5), 'c-.')
-        plt.plot(np.repeat(pc_col + dist80mm, 5), np.linspace(0, np.max(all_signalH), 5), 'm-.')
-        plt.plot(np.repeat(uniformity_range[0], len(all_signalH)), 'r--')
-        plt.plot(np.repeat(uniformity_range[1], len(all_signalH)), 'r--')
-        plt.legend(['Full Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Range',
-                    'Upper Range'],
-                   loc='lower center')
+        plt.vlines(pc_col, 0, vlinemaxh, colors='y', linestyles='dashdot')
+        plt.vlines(pc_col - dist80mm, 0, vlinemaxh, colors='c', linestyles='dashdot')
+        plt.vlines(pc_col + dist80mm, 0, vlinemaxh, colors='m', linestyles='dashdot')
+        plt.hlines(uniformity_range[0], 0, len(all_signalH), colors='r', linestyles='dashed')
+        plt.hlines(uniformity_range[1], 0, len(all_signalH), colors='r', linestyles='dashed')
+        plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
+                    'Upper Limit'], loc='lower left')
         plt.xlabel('Voxels')
         plt.ylabel('Signal')
         plt.title('Horizontal Data')
 
         plt.subplot(122)
         plt.plot(all_signalV, 'g')
-        plt.plot(np.repeat(pc_row, 5), np.linspace(0, np.max(all_signalV), 5), 'y-.')
-        plt.plot(np.repeat(pc_row - dist80mm, 5), np.linspace(0, np.max(all_signalV), 5), 'c-.')
-        plt.plot(np.repeat(pc_row + dist80mm, 5), np.linspace(0, np.max(all_signalV), 5), 'm-.')
-        plt.plot(np.repeat(uniformity_range[0], len(all_signalV)), 'r--')
-        plt.plot(np.repeat(uniformity_range[1], len(all_signalV)), 'r--')
-        plt.legend(['Full Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Range',
-                    'Upper Range'],
-                   loc='lower center')
+        plt.vlines(pc_row, 0, vlinemaxv, colors='y', linestyles='dashdot')
+        plt.vlines(pc_row - dist80mm, 0, vlinemaxv, colors='c', linestyles='dashdot')
+        plt.vlines(pc_row + dist80mm, 0, vlinemaxv, colors='m', linestyles='dashdot')
+        plt.hlines(uniformity_range[0], 0, len(all_signalV), colors='r', linestyles='dashed')
+        plt.hlines(uniformity_range[1], 0, len(all_signalV), colors='r', linestyles='dashed')
+        plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
+                    'Upper Limit'], loc='lower left')
         plt.xlabel('Voxels')
         plt.ylabel('Signal')
         plt.title('Vertical Data')
+        plt.savefig(fullimagepath + 'uniformity_profiles.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
         plt.figure()
         plt.plot(signalH, 'b')
         plt.plot(signalV, 'g')
-        plt.plot(np.repeat(uniformity_range[0], len(signalH)), 'r--')
-        plt.plot(np.repeat(uniformity_range[1], len(signalH)), 'r--')
-        plt.legend(['Horizontal Profile', 'Vertical Profile', 'Expected Lower Range', 'Expected Upper Range'],
-                   loc='lower center')
+        plt.hlines(uniformity_range[0], 0, len(signalH), colors='r', linestyles='dashed')
+        plt.hlines(uniformity_range[1], 0, len(signalH), colors='r', linestyles='dashed')
+        plt.legend(['Horizontal Profile', 'Vertical Profile', 'Lower Limit', 'Upper Limit'],
+                   loc='lower left')
         plt.xlabel('Voxels')
         plt.ylabel('Signal')
-        plt.title('Profiles for Fractional Uniformity Calculation')
+        plt.title('Selected Profile for Fractional Uniformity Calculation')
+        plt.savefig(fullimagepath + 'fraction_of_uniformity_profiles.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
         # fractional uniformity calculation
@@ -166,11 +172,11 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             fullimagepath = imagepath + test_object[jj] + '/' + geometry + '/'
             print(fullimagepath)
 
-            img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt, show_graphical=True, imagepath=fullimagepath)
+            img, imdata, pixels_space = uf.sort_import_data(directpath, geometry, pt, show_graphical=False, imagepath=fullimagepath)
             # mask phantom and background
             mask, bin_mask = uf.create_2D_mask(img)  # boolean and binary masks
             # draw centre ROI
-            pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=fullimagepath)
+            pc_row, pc_col, marker_im = uf.draw_centre_ROI(bin_mask, img, caseT, show_graphical=False, imagepath=fullimagepath)
 
             # get mean signal value in ROI
             mean_signal = uf.get_signal_value(imdata, pc_row, pc_col)
@@ -188,12 +194,12 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             srcH = (0, pc_row)  # LHS starting point (x, y) == (col, row)
             dstH = (dims[1]-1, pc_row)  # RHS finish point
             all_signalH = uf.obtain_uniformity_profile(imdata, srcH, dstH, pc_row, pc_col, dist80mm, caseH=True,
-                                                       caseV=False, show_graphical=True, imagepath=fullimagepath)
+                                                       caseV=False, show_graphical=False, imagepath=fullimagepath)
             """ plot vertical profile """
             srcV = (pc_col, 0)  # starting point
             dstV = (pc_col, dims[0]-1)  # finish point
             all_signalV = uf.obtain_uniformity_profile(imdata, srcV, dstV, pc_row, pc_col, dist80mm, caseH=False,
-                                                       caseV=True, show_graphical=True, imagepath=fullimagepath)
+                                                       caseV=True, show_graphical=False, imagepath=fullimagepath)
 
             """get 160 mm of horizontal profile"""
             signalH = all_signalH[pc_col - dist80mm:pc_col + dist80mm]
@@ -207,45 +213,54 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             if 161 < (len(signalV) * pixels_space[0])< 159:
                 ValueError('Length of Profile is not 160 mm as specified in MagNET protocol.')
 
-            plt.figure()
+            vlinemaxh = [np.max(all_signalH), uniformity_range[1]]
+            vlinemaxh = np.max(vlinemaxh)
+
+            vlinemaxv = [np.max(all_signalV), uniformity_range[1]]
+            vlinemaxv = np.max(vlinemaxv)
+
+            plt.figure(figsize=[20, 6])  # width, height in inches
             plt.subplot(121)
             plt.plot(all_signalH, 'b')
-            plt.plot(np.repeat(pc_col, 5), np.linspace(0, np.max(all_signalH), 5), 'y-.')
-            plt.plot(np.repeat(pc_col - dist80mm, 5), np.linspace(0, np.max(all_signalH), 5), 'c-.')
-            plt.plot(np.repeat(pc_col + dist80mm, 5), np.linspace(0, np.max(all_signalH), 5), 'm-.')
-            plt.plot(np.repeat(uniformity_range[0], len(all_signalH)), 'r--')
-            plt.plot(np.repeat(uniformity_range[1], len(all_signalH)), 'r--')
-            plt.legend(['Full Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Range', 'Upper Range'],
-                       loc='lower center')
+            plt.vlines(pc_col, 0, vlinemaxh, colors='y', linestyles='dashdot')
+            plt.vlines(pc_col - dist80mm, 0, vlinemaxh, colors='c', linestyles='dashdot')
+            plt.vlines(pc_col + dist80mm, 0, vlinemaxh, colors='m', linestyles='dashdot')
+            plt.hlines(uniformity_range[0], 0, len(all_signalH), colors='r', linestyles='dashed')
+            plt.hlines(uniformity_range[1], 0, len(all_signalH), colors='r', linestyles='dashed')
+            plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
+                        'Upper Limit'], loc='lower left')
             plt.xlabel('Voxels')
             plt.ylabel('Signal')
             plt.title('Horizontal Data')
 
             plt.subplot(122)
             plt.plot(all_signalV, 'g')
-            plt.plot(np.repeat(pc_row, 5), np.linspace(0, np.max(all_signalV), 5), 'y-.')
-            plt.plot(np.repeat(pc_row - dist80mm, 5), np.linspace(0, np.max(all_signalV), 5), 'c-.')
-            plt.plot(np.repeat(pc_row + dist80mm, 5), np.linspace(0, np.max(all_signalV), 5), 'm-.')
-            plt.plot(np.repeat(uniformity_range[0], len(all_signalV)), 'r--')
-            plt.plot(np.repeat(uniformity_range[1], len(all_signalV)), 'r--')
-            plt.legend(['Full Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Range',
-                        'Upper Range'],
-                       loc='lower center')
+            plt.vlines(pc_row, 0, vlinemaxv, colors='y', linestyles='dashdot')
+            plt.vlines(pc_row - dist80mm, 0, vlinemaxv, colors='c', linestyles='dashdot')
+            plt.vlines(pc_row + dist80mm, 0, vlinemaxv, colors='m', linestyles='dashdot')
+            plt.hlines(uniformity_range[0], 0, len(all_signalV), colors='r', linestyles='dashed')
+            plt.hlines(uniformity_range[1], 0, len(all_signalV), colors='r', linestyles='dashed')
+            plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
+                        'Upper Limit'], loc='lower left')
             plt.xlabel('Voxels')
             plt.ylabel('Signal')
             plt.title('Vertical Data')
+            plt.savefig(fullimagepath + 'uniformity_profiles.png', orientation='landscape', transparent=True,
+                        bbox_inches='tight', pad_inches=0.1)
             plt.show()
 
             plt.figure()
             plt.plot(signalH, 'b')
             plt.plot(signalV, 'g')
-            plt.plot(np.repeat(uniformity_range[0], len(signalH)), 'r--')
-            plt.plot(np.repeat(uniformity_range[1], len(signalH)), 'r--')
-            plt.legend(['Horizontal Profile', 'Vertical Profile', 'Expected Lower Range', 'Expected Upper Range'],
-                       loc='lower center')
+            plt.hlines(uniformity_range[0], 0, len(signalH), colors='r', linestyles='dashed')
+            plt.hlines(uniformity_range[1], 0, len(signalH), colors='r', linestyles='dashed')
+            plt.legend(['Horizontal Profile', 'Vertical Profile', 'Lower Limit', 'Upper Limit'],
+                       loc='lower left')
             plt.xlabel('Voxels')
             plt.ylabel('Signal')
-            plt.title('Profiles for Fractional Uniformity Calculation')
+            plt.title('Selected Profile for Fractional Uniformity Calculation')
+            plt.savefig(fullimagepath + 'fraction_of_uniformity_profiles.png', orientation='landscape', transparent=True,
+                        bbox_inches='tight', pad_inches=0.1)
             plt.show()
 
             # fractional uniformity calculation
@@ -295,14 +310,14 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
 
 # create Pandas data frame with auto results
 auto_data = {'Geometry': ['Transverse', 'Sagittal', 'Coronal', 'Transverse'],
-             'Coil': ['Head', 'Head', 'Head', 'Body'],
-             'Fractional Uniformity X': fx, 'Mean Uniformity X': mx, 'StDev Uniformity X': sx,
-             'Fractional Uniformity Y': fy, 'Mean Uniformity Y': my, 'StDev Uniformity Y': sy,
-             'Fractional Uniformity Z': fz, 'Mean Uniformity Z': mz, 'StDev Uniformity Z': sz}
+             'Coil': ['Head', 'Head', 'Head', 'Body'], 'Signal Range': uniformity_range,
+             'Fractional Uniformity X': fx, 'Mean Signal X': mx, 'StDev Signal X': sx,
+             'Fractional Uniformity Y': fy, 'Mean Signal Y': my, 'StDev Signal Y': sy,
+             'Fractional Uniformity Z': fz, 'Mean Signal Z': mz, 'StDev Signal Z': sz}
 
 auto_df = pd.DataFrame(auto_data, columns=['Geometry', 'Coil', 'Fractional Uniformity X', 'Fractional Uniformity Y',
-                                           'Fractional Uniformity Z', 'Mean Uniformity X', 'Mean Uniformity Y',
-                                           'Mean Uniformity Z', 'StDev Uniformity X', 'StDev Uniformity Y', 'StDev Uniformity X'])
+                                           'Fractional Uniformity Z', 'Mean Signal X', 'Mean Signal Y',
+                                           'Mean Signal Z', 'StDev Signal X', 'StDev Signal Y', 'StDev Signal Z'])
 
 print(auto_df.head())
 

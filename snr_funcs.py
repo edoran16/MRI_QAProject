@@ -407,11 +407,11 @@ def get_background_noise_value(imdata, bROIs):
     return noise, all_noise
 
 
-def calc_SNR(factor, mean_signal, noise):
+def calc_SNR(fact, mean_sig, nse):
     # SNR calculation (background method as opposed to subtraction method)
-    SNR_background = (factor * mean_signal) / noise
-    print('SNR = ', SNR_background.round(2))
-    return SNR_background
+    SNR_bckgrnd = (fact * mean_sig) / nse
+    print('SNR = ', SNR_bckgrnd.round(2))
+    return SNR_bckgrnd
 
 
 def calc_NSNR(pixels_space, st, N_PE, TR, NSA, SNR_background, Qfactor, BW=38.4, BWnom=30):
@@ -443,11 +443,10 @@ def calc_NSNR(pixels_space, st, N_PE, TR, NSA, SNR_background, Qfactor, BW=38.4,
     NSNR = TCF * SNR_background
     print('Normalised SNR = ', NSNR.round(2))
 
-    return NSNR, BWN, VC, TCF, TCF
+    return NSNR, BWN, VC, STC, TCF
 
-# TODO: save image path for spine functions!
 
-def draw_spine_signal_ROIs(bin_mask, img, show_bbox=False, show_graphical=True):
+def draw_spine_signal_ROIs(bin_mask, img, show_bbox=False, show_graphical=True, imagepath=None):
     """ show_bbox = False  # show bounding box of phantom on marker image """
     # draw signal ROIs
     # get centre of phantom and definte 5 ROIs from there
@@ -483,6 +482,7 @@ def draw_spine_signal_ROIs(bin_mask, img, show_bbox=False, show_graphical=True):
         cv2.line(marker_im, (bbox[3], bbox[0]), (bbox[1], bbox[0]), (255, 255, 255), 1)
 
     if show_graphical:
+        cv2.imwrite("{0}spine_signal_rois.png".format(imagepath), marker_im)
         cv2.imshow('Signal ROIs', marker_im)
         cv2.waitKey(0)
 
@@ -498,7 +498,7 @@ def get_spine_signal_value(imdata, pc_row, pc_col):
     return signal0
 
 
-def draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=True):
+def draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=True, imagepath=None):
     # Background ROIs according to MagNET protocol
     # auto detection of 4 x background ROI samples (one in each corner of background)
     dims = np.shape(mask)
@@ -544,6 +544,7 @@ def draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=True):
     marker_im[mid_row5 - 5:mid_row5 + 5, mid_col2 - 5:mid_col2 + 5] = (205, 235, 255)
 
     if show_graphical:
+        cv2.imwrite("{0}spine_all_rois.png".format(imagepath), marker_im)
         cv2.imshow('Signal and Background ROIs', marker_im)
         cv2.waitKey(0)
 

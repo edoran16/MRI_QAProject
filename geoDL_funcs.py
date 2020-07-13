@@ -46,7 +46,7 @@ def sort_import_data(directpath, geometry):
     return img, imdata, matrix_size, st, pixels_space
 
 
-def create_2D_mask(img, show_graphical=False):
+def create_2D_mask(img, show_graphical=False, imagepath=None):
     """ input:  img is  greyscale uint8 image data from DICOM
         output: ch is 2D mask (also grayscale!!!!)"""
 
@@ -88,6 +88,7 @@ def create_2D_mask(img, show_graphical=False):
     bin_ch = (ch / np.max(ch)).astype('uint8')  # binary mask [0, 1]
 
     if show_graphical:
+        cv2.imwrite("{0}mask.png".format(imagepath), ch)
         cv2.imshow('mask', ch)
         cv2.waitKey(0)
 
@@ -129,7 +130,7 @@ def geo_meta(dicomfile):
     return matrix_size, st, pixels_space
 
 
-def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False):
+def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False, imagepath=None):
     # src and dst are tuples of (x, y) i.e. (column, row)
 
     # draw line profile across centre line of phantom
@@ -166,6 +167,7 @@ def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False):
 
     improfile = display_profile_line(improfile, src, dst, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
 
+    cv2.imwrite("{0}single_profile.png".format(imagepath), improfile)
     cv2.imshow('Individual Profile Line', improfile)
     cv2.waitKey(0)
 
@@ -175,12 +177,14 @@ def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False):
         plt.plot(output, 'r')
         plt.xlabel('Number of Voxels')
         plt.ylabel('Signal')
+        plt.savefig(imagepath + 'signal_profiles_plot.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
     return output
 
 
-def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphical=False):
+def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphical=False, imagepath=None):
     # display profile line on phantom: from source code of profile_line function
     src_col, src_row = np.asarray(src, dtype=float)  # src = (x, y) = (col, row)
     dst_col, dst_row = np.asarray(dst, dtype=float)
@@ -199,19 +203,22 @@ def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphi
 
     # plot sampled line on phantom to visualise where output comes from
     if show_graphical:
+        cv2.imwrite("{0}single_line.png".format(imagepath), imdata)
         cv2.imshow('Individual Profile Line!!', imdata)
         cv2.waitKey(0)
 
     return imdata
 
 
-def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.15, show_graphical=False):
+def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.15, show_graphical=False, imagepath=None):
     # normalise profile
     profile = (profile - np.min(profile)) / (np.max(profile) - np.min(profile))
 
     if show_graphical:
         plt.plot(profile)
         plt.title('Normalised Profile')
+        plt.savefig(imagepath + 'normalised_profile.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
     # define region of signal profile around plate
@@ -220,6 +227,8 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
     if show_graphical:
         plt.plot(profile_inv)
         plt.title('Inverted Profile')
+        plt.savefig(imagepath + 'inverted_profile.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
     profile_smoothed = medfilt(profile_inv, kernel_size=17)
@@ -227,6 +236,8 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
     if show_graphical:
         plt.plot(profile_smoothed)
         plt.title('Inverted smoothed Profile')
+        plt.savefig(imagepath + 'inverted_smoothed_profile.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
     profile_inv = profile_smoothed  # increase accuracy for detecting centre of peak
@@ -241,6 +252,8 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
         plt.plot(profile_inv)
         plt.plot(peaks, profile_inv[peaks], "x")
         plt.title('Detecting Extrema to Define Plate and Surrounding Region')
+        plt.savefig(imagepath + 'inverted_smoothed_profile_with_peak.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
     profile_cropped = profile_cropped / np.max(profile_cropped)
@@ -248,6 +261,8 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
     if show_graphical:
         plt.plot(profile_cropped)
         plt.title('Signal Profile Cropped to Plate')
+        plt.savefig(imagepath + 'cropped_profile.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
         plt.show()
 
     # FWHM
@@ -261,7 +276,7 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
     fwhm = fwhm_idx_shape[1]/pixels_space[1]
     print('FWHM = ', fwhm)
 
-    plt.figure()
+    plt.figure(figsize=[10, 7.5])
     plt.plot(profile_cropped, 'r')
     plt.plot(np.min(fwhm_idx), prof_50, 'ko', label='_nolegend_')
     plt.plot(np.max(fwhm_idx), prof_50, 'ko', label='_nolegend_')
@@ -275,6 +290,8 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
     plt.ylabel('Normalised Signal')
     plt.legend(['Plate Profile', 'Baseline', 'Minimum', '50 % Threshold'], loc='center left')
     plt.title('Slice Width Measurement')
+    plt.savefig(imagepath + 'slice_width_measurement_figure.png', orientation='landscape', transparent=True,
+                bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
     stretch_factor = 5
