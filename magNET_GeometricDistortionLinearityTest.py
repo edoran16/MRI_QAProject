@@ -52,8 +52,8 @@ for ii in range(len(geos)):
     phim_gray = (phim_norm*255).astype('uint8')  # greyscale image
 
     # display phantom image
+    cv2.imwrite("{0}geo_phantom_image.png".format(fullimagepath), phim_gray)
     if show_graphical:
-        cv2.imwrite("{0}geo_phantom_image.png".format(fullimagepath), imdata)
         cv2.imshow('phantom image', phim_gray)
         cv2.waitKey(0)
 
@@ -68,14 +68,15 @@ for ii in range(len(geos)):
     ots = np.zeros_like(phim_gray, dtype=np.uint16)  # creates zero array same dimensions as img
     ots[(phim_gray > filters.threshold_otsu(phim_gray)) == True] = 1  # Otsu threshold on image
 
+    cv2.imwrite("{0}otsu_thresh_image.png".format(fullimagepath), (ots*255).astype('uint8'))
+    cv2.imwrite("{0}inv_otsu_thresh_image.png".format(fullimagepath), ((1 - ots)*255).astype('uint8'))
+    cv2.imwrite("{0}inv_otsu_eroded_image.png".format(fullimagepath), (((1 - ots) * ~bigbg)*1).astype('uint8'))
+
     if show_graphical:
-        cv2.imwrite("{0}otsu_thresh_image.png".format(fullimagepath), ots.astype('float32'))
         cv2.imshow('OTS', ots.astype('float32'))
         cv2.waitKey(0)
-        cv2.imwrite("{0}inv_otsu_thresh_image.png".format(fullimagepath), (1-ots).astype('float32'))
         cv2.imshow(' INVERSE OTS', (1-ots).astype('float32'))
         cv2.waitKey(0)
-        cv2.imwrite("{0}inv_otsu_eroded_image.png".format(fullimagepath), ((1 - ots)*~bigbg).astype('float32'))
         cv2.imshow('INVERSE OTS "ERODED"', ((1 - ots)*~bigbg).astype('float32'))
         cv2.waitKey(0)
 

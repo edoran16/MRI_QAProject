@@ -151,6 +151,13 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
 
             print(auto_constants_df)
 
+            results_df = auto_df.append(auto_df2, ignore_index=True)
+            results_df2 = results_df.append(auto_constants_df, ignore_index=True)
+            print('__._ATUTOMATED RESULTS_.__')
+            print(results_df2)
+
+            results_df2.to_html('snr_results.html')
+
             # import Excel data with macro results
 
             excel_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=1, sheet_name='SNR Head Head_Ni_Sola')
@@ -173,7 +180,7 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
                 C_excel_df = C_excel_df.dropna(how='all')
                 print(C_excel_df)
 
-
+            sys.exit()
 
 
 

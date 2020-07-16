@@ -236,8 +236,12 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
         else:
             improfile = display_profile_line(improfile, src2, dst2, pc_row, pc_col, dist80, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
 
+        if caseH:
+            cv2.imwrite("{0}profile_line_imageH.png".format(imagepath), improfile)
+        if caseV:
+            cv2.imwrite("{0}profile_line_imageV.png".format(imagepath), improfile)
+
         if show_graphical:
-            cv2.imwrite("{0}profile_line_image.png".format(imagepath), improfile)
             cv2.imshow('Individual Profile Line', improfile)
             cv2.waitKey(0)
 
