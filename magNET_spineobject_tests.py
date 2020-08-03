@@ -60,6 +60,7 @@ for ii in range(len(coils)):
 
                             image = img[sl, :, :]
 
+                            cv2.imwrite("{0}spine_test_object.png".format(fullimagepath), image)
                             if show_graphical:
                                 cv2.imshow('dicom imdata', image)
                                 cv2.waitKey(0)

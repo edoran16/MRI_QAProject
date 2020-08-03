@@ -8,6 +8,7 @@
 import sys
 import snr_funcs as sf
 import pandas as pd
+import numpy as np
 
 directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/SNR_Images/"
@@ -35,6 +36,7 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
         caseC = False  # coronal
 
         img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE = sf.sort_import_data(directpath, geometry, pt)
+
         # mask phantom and background
         mask, bin_mask = sf.create_2D_mask(img, show_graphical=True, imagepath=fullimagepath)  # boolean and binary masks
         # draw signal ROIs
@@ -127,36 +129,48 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
             Qfact = 1
             NSNR, BWcorr, PixelCorr, TimeCorr, TotalCorr = sf.calc_NSNR(pixels_space, st, N_PE, TR, NSA, SNR_background, Qfactor=Qfact)
 
+            print('__._AUTOMATED RESULTS_.__')
             # create Pandas data frame with auto results
-            auto_data = {'Signal ROI': [1, 2, 3, 4, 5], 'Signal Mean': all_signals,
-                         'Background ROI': [1, 2, 3, 4, 5], 'Noise SD': all_noise}
+            auto_data = {'Signal ROI': [1, 2, 3, 4, 5], 'Signal Mean': np.round(all_signals, 2),
+                         'Background ROI': [1, 2, 3, 4, 5], 'Noise SD': np.round(all_noise, 2)}
 
-            auto_data2 = {'Mean Signal': mean_signal, 'Mean Noise': b_noise,  'SNR': SNR_background,
-                          'Normalised SNR': NSNR}
+            auto_data2 = {'Mean Signal': np.round(mean_signal, 2), 'Mean Noise': np.round(b_noise, 2),  'SNR': np.round(SNR_background, 2),
+                          'Normalised SNR': np.round(NSNR, 2)}
 
             auto_df = pd.DataFrame(auto_data, columns=['Signal ROI', 'Signal Mean', 'Background ROI', 'Noise SD'])
             auto_df2 = pd.Series(auto_data2)
-            auto_df2.to_frame()
+            auto_df2 = auto_df2.to_frame()
 
             print(auto_df)
+            auto_df.to_html('snr_data.html')
             print(auto_df2)
+            auto_df2.to_html('snr_results.html')
 
-            auto_constants_data = {'Bandwidth': 38.4, 'Nominal Bandwidth': 30, 'BW Correction': BWcorr,
-                                   'Pixel Dimensions (mm)': pixels_space, 'Slice width (mm)': st,
-                                   'Voxel Correction': PixelCorr, 'Phase Encoding Steps': N_PE, 'TR': TR, 'NSA': NSA,
-                                   'Scan Time Correction': TimeCorr, 'Q Normalisation': Qfact,
-                                   'Total Correction Factor': TotalCorr}
+            auto_constants_data = {'Bandwidth': 38.4, 'Nominal Bandwidth': 30, 'BW Correction': np.round(BWcorr, 2),
+                                   'Pixel Dimensions (mm)': np.round(pixels_space, 2), 'Slice width (mm)': np.round(st, 2),
+                                   'Voxel Correction': np.round(PixelCorr, 2), 'Phase Encoding Steps': np.round(N_PE, 2),
+                                   'TR': TR, 'NSA': NSA,
+                                   'Scan Time Correction': np.round(TimeCorr, 2), 'Q Normalisation': np.round(Qfact, 2),
+                                   'Total Correction Factor': np.round(TotalCorr, 2)}
             auto_constants_df = pd.Series(auto_constants_data)
-            auto_constants_df.to_frame()
+            auto_constants_df = auto_constants_df.to_frame()
 
             print(auto_constants_df)
+            auto_constants_df.to_html('snr_normalisation_constants.html')
 
-            results_df = auto_df.append(auto_df2, ignore_index=True)
-            results_df2 = results_df.append(auto_constants_df, ignore_index=True)
-            print('__._ATUTOMATED RESULTS_.__')
+            # APPENDING EVERYTHING
+            # results_df = auto_df.append(auto_df2)  # ,
+            # results_df2 = results_df.append(auto_constants_df)  # , ignore_index=True
+            # results_df2 = results_df2.fillna('-')
+            # print(results_df2)
+
+            # CONCAT EVERYTHING
+            results_df = pd.concat([auto_df, auto_df2], join='outer')
+            results_df2 = pd.concat([results_df, auto_constants_df])  # , ignore_index=True
+            results_df2 = results_df2.fillna('-')
             print(results_df2)
+            results_df2.to_html('snr_results_all.html', justify='center', table_id='TRANVERSE')
 
-            results_df2.to_html('snr_results.html')
 
             # import Excel data with macro results
 

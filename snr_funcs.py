@@ -16,40 +16,85 @@ def create_2D_mask(img, show_graphical=False, imagepath=None):
         imagepath = where to save png
         output: ch is 2D mask (also grayscale!!!!)"""
 
+    if show_graphical:
+        cv2.imwrite("{0}img.png".format(imagepath), img)
+        cv2.imshow('img', img)
+        cv2.waitKey(0)
+
     h = ex.equalize_hist(img)  # histogram equalisation increases contrast of image
+    hn = h - np.min(h)
+    hn2 = (hn / np.max(hn)) * 255
+    print(np.max(hn2), np.min(hn2))
+
+    if show_graphical:
+        cv2.imwrite("{0}h.png".format(imagepath), hn2.astype('uint8'))
+        cv2.imshow('h', h)
+        cv2.waitKey(0)
 
     oi = np.zeros_like(img, dtype=np.uint8)  # creates zero array same dimensions as img
     oi[(img > filters.threshold_otsu(img)) == True] = 255  # Otsu threshold on image
 
+    if show_graphical:
+        cv2.imwrite("{0}oi.png".format(imagepath), oi)
+        cv2.imshow('oi', oi)
+        cv2.waitKey(0)
+
     oh = np.zeros_like(img, dtype=np.uint8)  # zero array same dims as img
     oh[(h > filters.threshold_otsu(h)) == True] = 255  # Otsu threshold on hist eq image
+
+    if show_graphical:
+        cv2.imwrite("{0}oh.png".format(imagepath), oh)
+        cv2.imshow('oh', oh)
+        cv2.waitKey(0)
 
     nm = img.shape[0] * img.shape[1]  # total number of voxels in image
     # calculate normalised weights for weighted combination
     w1 = np.sum(oi) / nm
     w2 = np.sum(oh) / nm
     ots = np.zeros_like(img, dtype=np.uint8)  # create final zero array
-    new = (w1 * img) + (w2 * h)  # weighted combination of original image and hist eq version
+    new = ((w1 * img) + (w2 * h))/(w1 + w2)  # weighted combination of original image and hist eq version
+    newn = new - np.min(new)
+    newn2 = (newn/np.max(newn))*255
+
+    if show_graphical:
+        cv2.imwrite("{0}new.png".format(imagepath), newn2.astype('uint8'))
+        cv2.imshow('new', new)
+        cv2.waitKey(0)
+
     ots[(new > filters.threshold_otsu(new)) == True] = 255  # Otsu threshold on weighted combination
 
-    # cv2.imshow('ots', ots)
-    # cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}ots.png".format(imagepath), ots)
+        cv2.imshow('ots', ots)
+        cv2.waitKey(0)
 
     eroded_ots = cv2.erode(ots, None, iterations=3)
     dilated_ots = cv2.dilate(eroded_ots, None, iterations=3)
-    #
-    # cv2.imshow('dilated', dilated_ots)
-    # cv2.waitKey(0)
+
+    if show_graphical:
+        cv2.imwrite("{0}erodedots.png".format(imagepath), eroded_ots)
+        cv2.imshow('eroded_ots', eroded_ots)
+        cv2.waitKey(0)
+        cv2.imwrite("{0}dilatedots.png".format(imagepath), dilated_ots)
+        cv2.imshow('dilated_ots', dilated_ots)
+        cv2.waitKey(0)
 
     openhull = opening(dilated_ots)
 
-    # cv2.imshow('openhull', openhull)
-    # cv2.waitKey(0)
+    if show_graphical:
+        cv2.imwrite("{0}openhull.png".format(imagepath), openhull)
+        cv2.imshow('openhull', openhull)
+        cv2.waitKey(0)
 
     conv_hull = convex_hull_image(openhull)
 
     ch = np.multiply(conv_hull, 1)  # bool --> binary
     ch = ch.astype('uint8') * 255
+
+    if show_graphical:
+        cv2.imwrite("{0}convhull.png".format(imagepath), ch)
+        cv2.imshow('conv_hull', ch)
+        cv2.waitKey(0)
 
     bin_ch = (ch / np.max(ch)).astype('uint8')  # binary mask [0, 1]
 
@@ -161,7 +206,9 @@ def sort_import_data(directpath, geometry, pt):
                                 for file in it:
                                     path = "{0}{1}".format(pathtodicom, file.name)
 
-                            ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
+                            ds, imdata, df, dims = dicom_read_and_write(path, writetxt=False)  # function from DICOM_test.py
+
+                            # sd, pn = dicom_geo(ds)
 
                             try:
                                 xdim, ydim = dims
@@ -551,3 +598,17 @@ def draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=True, ima
     bROIs = [bROI1, bROI2, bROI3, bROI4, bROI5]
 
     return bROIs
+
+
+def dicom_geo(dicomfile):
+    """ extract metadata for scan geometry from Series Description and Protcol Name """
+
+    # Series Description
+    series_description = dicomfile[0x0008, 0x103e]
+    series_description = series_description.value
+
+    # Protocol Name
+    protocol_name = dicomfile[0x0018, 0x1030]
+    protocol_name = protocol_name.value
+
+    return series_description, protocol_name
