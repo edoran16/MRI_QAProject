@@ -21,7 +21,7 @@ imagepath = "MagNET_acceptance_test_data/Resolution_Images/"
 
 show_graphical = False   # display/save image processing steps
 show_working_plots = False  # display peak detection to determine pass/fail
-show_final_plots = False  # display automated results (PASS/FAIL)
+show_final_plots = True  # display automated results (PASS/FAIL)
 show_manual_comp = True  # compare with manual results # todo: make these plots nice before saving
 
 matrix_sizes = ['256', '512']
@@ -310,7 +310,7 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.plot(np.repeat(signal50[0], len(analysis_region)), "--", color="gray")
                 plt.legend(['Line Profile', 'Peaks above 50%', 'Peaks below 50%', 'Troughs below 50%', '50% threshold'],
                         fontsize='x-small', loc='upper left', bbox_to_anchor=(0.025, 0.975))
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.show()
 
@@ -350,7 +350,7 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.plot(base_signal, 'g--')
                 plt.plot(signal50, 'k--')
                 plt.plot(min_signal, 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 # TODO: CRF CALCULATION
                 # plt.plot(np.repeat(alp, len(output)))
@@ -386,65 +386,71 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
         """ AUTOMATED RESULTS FINAL """
         if show_final_plots:
             if matrix_dims == [256, 256]:
-                plt.figure()
-                plt.subplot(121)
+                plt.figure(figsize=(6, 5))
+                #plt.subplot(121)
                 plt.plot(outputs_all[thickH])
                 plt.plot(base_signals_all[thickH], 'g--')
                 plt.plot(signal50s_all[thickH], 'k--')
                 plt.plot(min_signals_all[thickH], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.text(0, np.max(outputs_all[thickH]) + 10, pass_or_fail[thickH], fontsize=12, bbox=dict(facecolor=fcs[thickH], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thickH]) - 10, np.max(outputs_all[thickH]) + 20])
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
                            fontsize='x-small', loc='lower left', bbox_to_anchor=(0.05, 0.05))
                 plt.title('1 mm Parallel Bars (Horizontal)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_auto1.png', orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(122)
+                plt.figure(figsize=(6, 5))
                 plt.plot(outputs_all[thickV])
                 plt.plot(base_signals_all[thickV], 'g--')
                 plt.plot(signal50s_all[thickV], 'k--')
                 plt.plot(min_signals_all[thickV], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.text(0, np.max(outputs_all[thickV]) + 10, pass_or_fail[thickV], fontsize=12, bbox=dict(facecolor=fcs[thickV], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thickV]) - 10, np.max(outputs_all[thickV]) + 20])
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
                            fontsize='x-small', loc='lower left', bbox_to_anchor=(0.05, 0.05))
                 plt.title('1 mm Parallel Bars (Vertical)')
-                temp = geos_titles[gs]
-                plt.suptitle('256 x 256 ' + temp + ' RESULTS')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_auto2.png', orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
                 plt.show()
 
             if matrix_dims == [512, 512]:
-                plt.figure()
-                plt.subplot(121)
+                plt.figure(figsize=(6, 5))
+                #plt.subplot(121)
                 plt.plot(outputs_all[thinH])
                 plt.plot(base_signals_all[thinH], 'g--')
                 plt.plot(signal50s_all[thinH], 'k--')
                 plt.plot(min_signals_all[thinH], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.text(0, np.max(outputs_all[thinH]) + 10, pass_or_fail[thinH], fontsize=12, bbox=dict(facecolor=fcs[thinH], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thinH]) - 10, np.max(outputs_all[thinH]) + 20])
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
                            fontsize='x-small', loc='lower left', bbox_to_anchor=(0.05, 0.05))
                 plt.title('0.5 mm Parallel Bars (Horizontal)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_auto1.png', orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(122)
+                plt.figure(figsize=(6, 5))
                 plt.plot(outputs_all[thinV])
                 plt.plot(base_signals_all[thinV], 'g--')
                 plt.plot(signal50s_all[thinV], 'k--')
                 plt.plot(min_signals_all[thinV], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.text(0, np.max(outputs_all[thinV]) + 10, pass_or_fail[thinV], fontsize=12, bbox=dict(facecolor=fcs[thinV], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thinV]) - 10, np.max(outputs_all[thinV]) + 20])
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
                            fontsize='x-small', loc='lower left', bbox_to_anchor=(0.05, 0.05))
                 plt.title('0.5 mm Parallel Bars (Vertical)')
-                temp = geos_titles[gs]
-                plt.suptitle('512 x 512 ' + temp + ' RESULTS')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_auto2.png', orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
                 plt.show()
 
         """ COMPARISON WITH MANUAL RESULTS  """
@@ -502,13 +508,13 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
             """FOR REPORT OUTPUT"""
             if matrix_dims == [256, 256]:
                 print('problem here')
-                plt.figure()
-                plt.subplot(221)
+                plt.figure(figsize=(6, 5))
+                #plt.subplot(221)
                 plt.plot(outputs_all[thickH])
                 plt.plot(base_signals_all[thickH], 'g--')
                 plt.plot(signal50s_all[thickH], 'k--')
                 plt.plot(min_signals_all[thickH], 'r--')
-                # plt.xlabel('Voxel Number')
+                # plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -516,13 +522,17 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(0, np.max(outputs_all[thickH]) + 10, pass_or_fail[thickH], fontsize=12, bbox=dict(facecolor=fcs[thickH], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thickH]) - 10, np.max(outputs_all[thickH]) + 30])
                 plt.title('Automated Analysis: 1 mm Parallel Bars (Horizontal)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto1.png',
+                            orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(222)
+                plt.figure(figsize=(6, 5))
                 plt.plot(outputs_all[thickV])
                 plt.plot(base_signals_all[thickV], 'g--')
                 plt.plot(signal50s_all[thickV], 'k--')
                 plt.plot(min_signals_all[thickV], 'r--')
-                # plt.xlabel('Voxel Number')
+                # plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -530,13 +540,17 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(0, np.max(outputs_all[thickV]) + 10, pass_or_fail[thickV], fontsize=12, bbox=dict(facecolor=fcs[thickV], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thickV]) - 10, np.max(outputs_all[thickV]) + 30])
                 plt.title('Automated Analysis: 1 mm Parallel Bars (Vertical)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto2.png',
+                            orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(223)
+                plt.figure(figsize=(6, 5))
                 plt.plot(horiz_data.iloc[:, 0])
                 plt.plot(horiz_data.iloc[:, 1], 'g--')
                 plt.plot(horiz_data.iloc[:, 3], 'k--')
                 plt.plot(horiz_data.iloc[:, 2], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -544,13 +558,17 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(2, np.max(horiz_data.iloc[:, 0]) + 100, pfh, fontsize=12, bbox=dict(facecolor=pfhc, alpha=0.5))
                 plt.ylim([np.min(horiz_data.iloc[:, 0]) - 100, np.max(horiz_data.iloc[:, 0]) + 300])
                 plt.title('Manual Analysis: 1 mm Parallel Bars (Horizontal)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto3.png',
+                            orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(224)
+                plt.figure(figsize=(6, 5))
                 plt.plot(vert_data.iloc[:, 0])
                 plt.plot(vert_data.iloc[:, 1], 'g--')
                 plt.plot(vert_data.iloc[:, 3], 'k--')
                 plt.plot(vert_data.iloc[:, 2], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -558,18 +576,20 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(2, np.max(vert_data.iloc[:, 0]) + 100, pfv, fontsize=12, bbox=dict(facecolor=pfvc, alpha=0.5))
                 plt.ylim([np.min(vert_data.iloc[:, 0]) - 100, np.max(vert_data.iloc[:, 0]) + 300])
                 plt.title(' Manual Analysis: 1 mm Parallel Bars (Vertical)')
-                temp = geos_titles[gs]
-                plt.suptitle('256 x 256 ' + temp + ' RESULTS')
+                #temp = geos_titles[gs]
+                #plt.suptitle('256 x 256 ' + temp + ' RESULTS')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto4.png', orientation='landscape',
+                            bbox_inches='tight', pad_inches=0.1)
                 plt.show()
 
             if matrix_dims == [512, 512]:
-                plt.figure()
-                plt.subplot(221)
+                plt.figure(figsize=(6, 5))
+                #plt.subplot(221)
                 plt.plot(outputs_all[thinH])
                 plt.plot(base_signals_all[thinH], 'g--')
                 plt.plot(signal50s_all[thinH], 'k--')
                 plt.plot(min_signals_all[thinH], 'r--')
-                # plt.xlabel('Voxel Number')
+                # plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -577,13 +597,16 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(0, np.max(outputs_all[thinH]) + 10, pass_or_fail[thinH], fontsize=12, bbox=dict(facecolor=fcs[thinH], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thinH]) - 10, np.max(outputs_all[thinH]) + 30])
                 plt.title('Automated Analysis: 0.5 mm Parallel Bars (Horizontal)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto1.png',
+                            orientation='landscape', bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(222)
+                plt.figure(figsize=(6, 5))
                 plt.plot(outputs_all[thinV])
                 plt.plot(base_signals_all[thinV], 'g--')
                 plt.plot(signal50s_all[thinV], 'k--')
                 plt.plot(min_signals_all[thinV], 'r--')
-                # plt.xlabel('Voxel Number')
+                # plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -591,13 +614,16 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(0, np.max(outputs_all[thinV]) + 10, pass_or_fail[thinV], fontsize=12, bbox=dict(facecolor=fcs[thinV], alpha=0.5))
                 plt.ylim([np.min(outputs_all[thinV]) - 10, np.max(outputs_all[thinV]) + 30])
                 plt.title('Automated Analysis: 0.5 mm Parallel Bars (Vertical)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto2.png',
+                            orientation='landscape', bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(223)
+                plt.figure(figsize=(6, 5))
                 plt.plot(horiz_data.iloc[:, 0])
                 plt.plot(horiz_data.iloc[:, 1], 'g--')
                 plt.plot(horiz_data.iloc[:, 3], 'k--')
                 plt.plot(horiz_data.iloc[:, 2], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -605,13 +631,16 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(2, np.max(horiz_data.iloc[:, 0]) + 100, pfh, fontsize=12, bbox=dict(facecolor=pfhc, alpha=0.5))
                 plt.ylim([np.min(horiz_data.iloc[:, 0]) - 100, np.max(horiz_data.iloc[:, 0]) + 300])
                 plt.title('Manual Analysis: 0.5 mm Parallel Bars (Horizontal)')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto3.png',
+                            orientation='landscape', bbox_inches='tight', pad_inches=0.1)
+                plt.show()
 
-                plt.subplot(224)
+                plt.figure(figsize=(6, 5))
                 plt.plot(vert_data.iloc[:, 0])
                 plt.plot(vert_data.iloc[:, 1], 'g--')
                 plt.plot(vert_data.iloc[:, 3], 'k--')
                 plt.plot(vert_data.iloc[:, 2], 'r--')
-                plt.xlabel('Voxel Number')
+                plt.xlabel('Pixel Number')
                 plt.ylabel('Signal')
                 plt.xticks(fontsize=8)
                 plt.legend(['Line Profile', 'Baseline Signal', '50% Signal', 'Minimum Signal'],
@@ -619,8 +648,10 @@ for ms in range(len(matrix_sizes)):  # iterate through matrix sizes under invest
                 plt.text(2, np.max(vert_data.iloc[:, 0]) + 100, pfv, fontsize=12, bbox=dict(facecolor=pfvc, alpha=0.5))
                 plt.ylim([np.min(vert_data.iloc[:, 0]) - 100, np.max(vert_data.iloc[:, 0]) + 300])
                 plt.title('Manual Analysis: 0.5 mm Parallel Bars (Vertical)')
-                temp = geos_titles[gs]
-                plt.suptitle('512 x 512 ' + temp + ' RESULTS')
+                #temp = geos_titles[gs]
+                #plt.suptitle('512 x 512 ' + temp + ' RESULTS')
+                plt.savefig(imagepath + matrix_sizes[ms] + geos[gs] + 'final_plots_manual_and_auto4.png',
+                            orientation='landscape', bbox_inches='tight', pad_inches=0.1)
                 plt.show()
 
         """ NEXT ITERATION HERE"""

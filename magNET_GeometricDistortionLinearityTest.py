@@ -15,7 +15,7 @@ imagepath = "MagNET_acceptance_test_data/GEO_Images/"
 geos = ['_TRA', '_SAG', '_COR']
 
 for ii in range(len(geos)):
-    show_graphical = False
+    show_graphical = True
     geometry = geos[ii]
     print('Data geometry =', geometry, '.')
     if geometry == '_TRA':

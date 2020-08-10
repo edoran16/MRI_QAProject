@@ -52,9 +52,9 @@ def create_2D_mask(img, show_graphical=False, imagepath=None):
     w1 = np.sum(oi) / nm
     w2 = np.sum(oh) / nm
     ots = np.zeros_like(img, dtype=np.uint8)  # create final zero array
-    new = ((w1 * img) + (w2 * h))/(w1 + w2)  # weighted combination of original image and hist eq version
+    new = ((w1 * img) + (w2 * h)) / (w1 + w2)  # weighted combination of original image and hist eq version
     newn = new - np.min(new)
-    newn2 = (newn/np.max(newn))*255
+    newn2 = (newn / np.max(newn)) * 255
 
     if show_graphical:
         cv2.imwrite("{0}new.png".format(imagepath), newn2.astype('uint8'))
@@ -197,8 +197,21 @@ def sort_import_data(directpath, geometry, pt):
             if re.search('-SNR_', fname):
                 if re.search(geometry, fname):
                     if re.search(pt, fname):
-                        if not re.search('_REPEAT', fname) and not re.search('_PR', fname) and not re.search('_OIL',fname):
+                        if not re.search('_REPEAT', fname) and not re.search('_PR', fname) and not re.search('_OIL',
+                                                                                                             fname):
                             print('Loading ...', fname)
+
+                            # FOR XNAT DOCKER DEVELOPMENT
+                            x = re.search('moo', fname)
+                            if x:
+                                y = 1
+                            try:
+                                print(y)
+                                print('This scan WAS acquired for the SNR test.')
+                            except:
+                                print('This scan WAS NOT acquired for the SNR test.')
+                                exit(1)
+                            ########################
                             folder = fname
                             pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
 
@@ -206,7 +219,8 @@ def sort_import_data(directpath, geometry, pt):
                                 for file in it:
                                     path = "{0}{1}".format(pathtodicom, file.name)
 
-                            ds, imdata, df, dims = dicom_read_and_write(path, writetxt=False)  # function from DICOM_test.py
+                            ds, imdata, df, dims = dicom_read_and_write(path,
+                                                                        writetxt=False)  # function from DICOM_test.py
 
                             # sd, pn = dicom_geo(ds)
 
@@ -349,12 +363,31 @@ def get_signal_value(imdata, pc_row, pc_col, quad_centres):
     return mean_signal, all_signals
 
 
-def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=None):
+def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=None,
+                         marker_im2=None):
     # Background ROIs according to MagNET protocol
     # TODO: adapt ROI function to correct ROI placement if there is an error re: 20x20 coverage of background ONLY.
     # auto detection of 4 x background ROI samples (one in each corner of background)
     dims = np.shape(mask)
     bin_mask = mask.astype('uint8')
+
+    # for noise stuff
+    if marker_im2 == []:
+        bin_mask2 = cv2.cvtColor(255 - mask, cv2.COLOR_GRAY2BGR)  # grayscale to colour
+        bin_mask2 = bin_mask2.astype('uint8')
+
+        plt.figure()
+        plt.imshow(bin_mask2, cmap='gray')
+        plt.axis('off')
+        plt.show()
+
+        marker_im2 = marker_im * bin_mask2
+
+    plt.figure()
+    plt.imshow(marker_im2, cmap='gray')
+    plt.clim(0, 0.01*np.max(marker_im2))
+    plt.axis('off')
+    plt.show()
 
     idx = np.where(mask)  # returns indices where the phantom exists (from Otsu threshold)
     rows = idx[0]
@@ -379,51 +412,98 @@ def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_grap
     if caseT:
         bROI1[mid_row1 - 10:mid_row1 + 10, min_col - 10:min_col + 10] = 255  # top left
         marker_im[mid_row1 - 10:mid_row1 + 10, min_col - 10:min_col + 10] = (0, 0, 255)
+        marker_im2[mid_row1 - 10, min_col - 10:min_col + 10] = 255
+        marker_im2[mid_row1 + 10, min_col - 10:min_col + 10] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, min_col - 10] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, min_col + 10] = 255
         bROI1_check = check_ROI(bROI1, bin_mask)
 
         bROI2[mid_row1 - 10:mid_row1 + 10, max_col - 10:max_col + 10] = 255  # top right
         marker_im[mid_row1 - 10:mid_row1 + 10, max_col - 10:max_col + 10] = (0, 255, 0)
+        marker_im2[mid_row1 + 10, max_col - 10:max_col + 10] = 255
+        marker_im2[mid_row1 - 10, max_col - 10:max_col + 10] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, max_col + 10] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, max_col - 10] = 255
         bROI2_check = check_ROI(bROI2, bin_mask)
 
         bROI3[mid_row2 - 30:mid_row2 - 10, min_col - 10:min_col + 10] = 255  # bottom left
         marker_im[mid_row2 - 30:mid_row2 - 10, min_col - 10:min_col + 10] = (255, 0, 0)
+        marker_im2[mid_row2 - 10, min_col - 10:min_col + 10] = 255
+        marker_im2[mid_row2 - 30, min_col - 10:min_col + 10] = 255
+        marker_im2[mid_row2 - 30:mid_row2 - 10, min_col + 10] = 255
+        marker_im2[mid_row2 - 30:mid_row2 - 10, min_col - 10] = 255
         bROI3_check = check_ROI(bROI3, bin_mask)
 
         # TODO: check that this fits below phantom.... if not then place on top of phantom
         bROI4[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = 255  # bottom centre
         marker_im[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = (0, 140, 255)
+        marker_im2[mid_row2 + 10, pc_col - 10:pc_col + 10] = 255
+        marker_im2[mid_row2 - 10, pc_col - 10:pc_col + 10] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, pc_col + 10] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, pc_col - 10] = 255
         bROI4_check = check_ROI(bROI4, bin_mask)
 
         bROI5[mid_row2 - 30:mid_row2 - 10, max_col - 10:max_col + 10] = 255  # bottom right
         marker_im[mid_row2 - 30:mid_row2 - 10, max_col - 10:max_col + 10] = (205, 235, 255)
+        marker_im2[mid_row2 - 10, max_col - 10:max_col + 10] = 255
+        marker_im2[mid_row2 - 30, max_col - 10:max_col + 10] = 255
+        marker_im2[mid_row2 - 30:mid_row2 - 10, max_col + 10] = 255
+        marker_im2[mid_row2 - 30:mid_row2 - 10, max_col - 10] = 255
         bROI5_check = check_ROI(bROI5, bin_mask)
 
     if caseS or caseC:
         bROI1[mid_row1 - 10:mid_row1 + 10, min_col - 25:min_col - 5] = 255  # top left
         marker_im[mid_row1 - 10:mid_row1 + 10, min_col - 25:min_col - 5] = (0, 0, 255)
+        marker_im2[mid_row1 + 10, min_col - 25:min_col - 5] = 255
+        marker_im2[mid_row1 - 10, min_col - 25:min_col - 5] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, min_col - 5] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, min_col - 25] = 255
         bROI1_check = check_ROI(bROI1, bin_mask)
 
         bROI2[mid_row1 - 10:mid_row1 + 10, max_col + 5:max_col + 25] = 255  # top right
         marker_im[mid_row1 - 10:mid_row1 + 10, max_col + 5:max_col + 25] = (0, 255, 0)
+        marker_im2[mid_row1 + 10, max_col + 5:max_col + 25] = 255
+        marker_im2[mid_row1 - 10, max_col + 5:max_col + 25] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, max_col + 25] = 255
+        marker_im2[mid_row1 - 10:mid_row1 + 10, max_col + 5] = 255
         bROI2_check = check_ROI(bROI2, bin_mask)
 
         bROI3[mid_row2 - 10:mid_row2 + 10, min_col - 25:min_col - 5] = 255  # bottom left
         marker_im[mid_row2 - 10:mid_row2 + 10, min_col - 25:min_col - 5] = (255, 0, 0)
+        marker_im2[mid_row2 + 10, min_col - 25:min_col - 5] = 255
+        marker_im2[mid_row2 - 10, min_col - 25:min_col - 5] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, min_col - 5] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, min_col - 25] = 255
         bROI3_check = check_ROI(bROI3, bin_mask)
 
         # TODO: check that this fits below phantom.... if not then place on top of phantom
         bROI4[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = 255  # bottom centre
         marker_im[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = (0, 140, 255)
+        marker_im2[mid_row2 + 10, pc_col - 10:pc_col + 10] = 255
+        marker_im2[mid_row2 - 10, pc_col - 10:pc_col + 10] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, pc_col + 10] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, pc_col - 10] = 255
         bROI4_check = check_ROI(bROI4, bin_mask)
 
         bROI5[mid_row2 - 10:mid_row2 + 10, max_col + 5:max_col + 25] = 255  # bottom right
         marker_im[mid_row2 - 10:mid_row2 + 10, max_col + 5:max_col + 25] = (205, 235, 255)
+        marker_im2[mid_row2 + 10, max_col + 5:max_col + 25] = 255
+        marker_im2[mid_row2 - 10, max_col + 5:max_col + 25] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, max_col + 25] = 255
+        marker_im2[mid_row2 - 10:mid_row2 + 10, max_col + 5] = 255
         bROI5_check = check_ROI(bROI5, bin_mask)
 
     if show_graphical:
         cv2.imwrite("{0}drawing_bground_rois.png".format(imagepath), marker_im)
         cv2.imshow('Signal and Background ROIs', marker_im)
         cv2.waitKey(0)
+
+    plt.figure()
+    plt.imshow(marker_im2, cmap='gray')
+    plt.clim(0, 0.01 * np.max(marker_im2))
+    plt.axis('off')
+    plt.savefig(imagepath + 'noise_and_bROIs.png', bbox_inches='tight')
+    plt.show()
 
     bROIs = [bROI1, bROI2, bROI3, bROI4, bROI5]
 
@@ -557,16 +637,16 @@ def draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=True, ima
     min_col = np.min(cols)  # first column of phantom
     max_col = np.max(cols)  # last column of phantom
 
-    row_third = int(round(dims[0]/3))
-    mid_row1 = int(round(row_third/2))
+    row_third = int(round(dims[0] / 3))
+    mid_row1 = int(round(row_third / 2))
     mid_row2 = mid_row1 + row_third
     mid_row3 = mid_row2 + row_third
 
-    mid_row4 = int(round(mid_row1 + ((mid_row2 - mid_row1)/2)))
+    mid_row4 = int(round(mid_row1 + ((mid_row2 - mid_row1) / 2)))
     mid_row5 = int(round(mid_row2 + ((mid_row3 - mid_row2) / 2)))
 
-    mid_col1 = int(round(min_col/2))
-    mid_col2 = int(round(max_col + ((dims[1] - max_col)/2)))
+    mid_col1 = int(round(min_col / 2))
+    mid_col2 = int(round(max_col + ((dims[1] - max_col) / 2)))
 
     bROI1 = np.zeros(np.shape(mask))  # initialise image matrix for each corner ROI
     bROI2 = np.zeros(np.shape(mask))

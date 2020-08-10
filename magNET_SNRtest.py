@@ -9,6 +9,8 @@ import sys
 import snr_funcs as sf
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import cv2
 
 directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/SNR_Images/"
@@ -38,7 +40,7 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
         img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE = sf.sort_import_data(directpath, geometry, pt)
 
         # mask phantom and background
-        mask, bin_mask = sf.create_2D_mask(img, show_graphical=True, imagepath=fullimagepath)  # boolean and binary masks
+        mask, bin_mask = sf.create_2D_mask(img, show_graphical=False, imagepath=fullimagepath)  # boolean and binary masks
         # draw signal ROIs
         pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False,
                                                                       show_graphical=True, imagepath=fullimagepath)
@@ -46,7 +48,8 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
         mean_signal, all_signals = sf.get_signal_value(imdata, pc_row, pc_col, quad_centres)
         factor = 0.655  # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
         # draw background ROIs
-        bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath)
+        noisemarker = imdata * (1 - bin_mask)
+        bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath, marker_im2=noisemarker)
         # get background/noise value
         b_noise, all_noise = sf.get_background_noise_value(imdata, bROIs)
         # SNR calculation (background method)
@@ -112,15 +115,32 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
                 caseC = True  # coronal
 
             img, imdata, pixels_space, st, NSA, PxlBW, Tx_Freq, TR, N_PE = sf.sort_import_data(directpath, geometry, pt)
+
+            plt.figure()
+            plt.imshow(imdata, cmap='gray')
+            plt.clim(0, 0.01 * np.max(imdata))
+            plt.axis('off')
+            plt.savefig(fullimagepath + 'noise_windowing.png', bbox_inches='tight')
+            plt.show()
+
             # mask phantom and background
-            mask, bin_mask = sf.create_2D_mask(img, show_graphical=True, imagepath=fullimagepath)  # boolean and binary masks
+            mask, bin_mask = sf.create_2D_mask(img, show_graphical=False, imagepath=fullimagepath)  # boolean and binary masks
+
+            plt.figure()
+            plt.imshow(imdata * (1 - bin_mask), cmap='gray')
+            plt.clim(0, 0.01*np.max(imdata))
+            plt.axis('off')
+            plt.savefig(fullimagepath + 'noise_masking.png', bbox_inches='tight')
+            plt.show()
+
             # draw signal ROIs
             pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graphical=True, imagepath=fullimagepath)
             # get signal value
             mean_signal, all_signals = sf.get_signal_value(imdata, pc_row, pc_col, quad_centres)
             factor = 0.655  # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
             # draw background ROIs
-            bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath)
+            noisemarker = imdata*(1 - bin_mask)
+            bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath, marker_im2=noisemarker)
             # get background/noise value
             b_noise, all_noise = sf.get_background_noise_value(imdata, bROIs)
             # SNR calculation (background method)
@@ -194,7 +214,7 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
                 C_excel_df = C_excel_df.dropna(how='all')
                 print(C_excel_df)
 
-            sys.exit()
+            #sys.exit()
 
 
 

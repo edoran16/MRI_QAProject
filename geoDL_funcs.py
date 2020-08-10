@@ -175,7 +175,7 @@ def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False, imagepa
     if show_graphical:
         plt.figure()
         plt.plot(output, 'r')
-        plt.xlabel('Number of Voxels')
+        plt.xlabel('Pixel Number')
         plt.ylabel('Signal')
         plt.savefig(imagepath + 'signal_profiles_plot.png', orientation='landscape', transparent=True,
                     bbox_inches='tight', pad_inches=0.1)
@@ -286,7 +286,7 @@ def slice_width_calc(profile, pixels_space, st, basefactor=0.25, basefactor2=0.1
     plt.vlines(base2, 0, 1, color='c', linestyles='dashed')
     plt.vlines(len(profile_cropped) - base2, 0, 1, color='c', linestyles='dashed')
     plt.text(np.mean(fwhm_idx), prof_50 + 0.05, 'FWHM', fontsize=12, horizontalalignment='center')
-    plt.xlabel('Number of Voxels')
+    plt.xlabel('Pixel Number')
     plt.ylabel('Normalised Signal')
     plt.legend(['Plate Profile', 'Baseline', 'Minimum', '50 % Threshold'], loc='center left')
     plt.title('Slice Width Measurement')

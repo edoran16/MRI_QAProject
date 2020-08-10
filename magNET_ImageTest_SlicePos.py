@@ -29,7 +29,7 @@ ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
 
 try:
     xdim, ydim, zdim = dims
-    # OrthoSlicer3D(imdata).show()  # look at 3D volume data
+    OrthoSlicer3D(imdata).show()  # look at 3D volume data
 except ValueError:
     print('DATA INPUT ERROR: this is 2D image data')
     sys.exit()

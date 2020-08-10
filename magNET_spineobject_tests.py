@@ -140,7 +140,7 @@ for ii in range(len(coils)):
                         plt.plot(np.repeat(uniformity_range[0], len(all_signalV)), 'r--')
                         plt.plot(np.repeat(uniformity_range[1], len(all_signalV)), 'r--')
                         plt.legend(['Full Profile', 'Lower Range', 'Upper Range'], loc='lower center')
-                        plt.xlabel('Voxels')
+                        plt.xlabel('Pixel Number')
                         plt.ylabel('Signal')
                         plt.title('Vertical Data')
                         plt.savefig(fullimagepath + 'vertical_uniformity.png', orientation='landscape', transparent=True,
@@ -172,15 +172,15 @@ print('__._AUTO UNIFORMITY RESULTS_.__')
 pd.set_option('display.max_columns', None)
 print(auto_df.head())
 
-# plt.figure()
-# for kk in range(6):
-#     plt.plot(all_signals[kk])
-# plt.xlabel('Voxels')
-# plt.ylabel('Signal')
-# plt.title('Uniformity Results: Spine Test Object')
-# plt.savefig(imagepath + 'all_spine_uniformities.png', orientation='landscape', transparent=True,
-#                     bbox_inches='tight', pad_inches=0.1)
-# plt.show()
+plt.figure()
+for kk in range(5):
+    plt.plot(all_signals[kk])
+plt.xlabel('Pixel Number')
+plt.ylabel('Signal')
+plt.title('Uniformity Results: Spine Test Object')
+plt.savefig(imagepath + 'all_spine_uniformities.png', orientation='landscape', transparent=True,
+                    bbox_inches='tight', pad_inches=0.1)
+plt.show()
 #
 #
 #

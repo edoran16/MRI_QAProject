@@ -99,7 +99,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         plt.hlines(uniformity_range[1], 0, len(all_signalH), colors='r', linestyles='dashed')
         plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
                     'Upper Limit'], loc='lower left')
-        plt.xlabel('Voxels')
+        plt.xlabel('Pixel Number')
         plt.ylabel('Signal')
         plt.title('Horizontal Data')
 
@@ -112,7 +112,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         plt.hlines(uniformity_range[1], 0, len(all_signalV), colors='r', linestyles='dashed')
         plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
                     'Upper Limit'], loc='lower left')
-        plt.xlabel('Voxels')
+        plt.xlabel('Pixel Number')
         plt.ylabel('Signal')
         plt.title('Vertical Data')
         plt.savefig(fullimagepath + 'uniformity_profiles.png', orientation='landscape', transparent=True,
@@ -126,7 +126,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
         plt.hlines(uniformity_range[1], 0, len(signalH), colors='r', linestyles='dashed')
         plt.legend(['Horizontal Profile', 'Vertical Profile', 'Lower Limit', 'Upper Limit'],
                    loc='lower left')
-        plt.xlabel('Voxels')
+        plt.xlabel('Pixel Number')
         plt.ylabel('Signal')
         plt.title('Selected Profile for Fractional Uniformity Calculation')
         plt.savefig(fullimagepath + 'fraction_of_uniformity_profiles.png', orientation='landscape', transparent=True,
@@ -229,7 +229,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             plt.hlines(uniformity_range[1], 0, len(all_signalH), colors='r', linestyles='dashed')
             plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
                         'Upper Limit'], loc='lower left')
-            plt.xlabel('Voxels')
+            plt.xlabel('Pixel Number')
             plt.ylabel('Signal')
             plt.title('Horizontal Data')
 
@@ -242,7 +242,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             plt.hlines(uniformity_range[1], 0, len(all_signalV), colors='r', linestyles='dashed')
             plt.legend(['Signal Profile', 'Centre of Profile', '- 80 mm of Centre', '+ 80 mm of Centre', 'Lower Limit',
                         'Upper Limit'], loc='lower left')
-            plt.xlabel('Voxels')
+            plt.xlabel('Pixel Number')
             plt.ylabel('Signal')
             plt.title('Vertical Data')
             plt.savefig(fullimagepath + 'uniformity_profiles.png', orientation='landscape', transparent=True,
@@ -256,7 +256,7 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             plt.hlines(uniformity_range[1], 0, len(signalH), colors='r', linestyles='dashed')
             plt.legend(['Horizontal Profile', 'Vertical Profile', 'Lower Limit', 'Upper Limit'],
                        loc='lower left')
-            plt.xlabel('Voxels')
+            plt.xlabel('Pixel Number')
             plt.ylabel('Signal')
             plt.title('Selected Profile for Fractional Uniformity Calculation')
             plt.savefig(fullimagepath + 'fraction_of_uniformity_profiles.png', orientation='landscape', transparent=True,

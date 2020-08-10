@@ -88,6 +88,20 @@ def sort_import_data(directpath, geometry, pt, show_graphical=False, imagepath=N
                     if re.search(pt, fname):
                         if not re.search('_REPEAT', fname) and not re.search('_PR', fname) and not re.search('_OIL',fname):
                             print('Loading ...', fname)
+
+                            ## DOCKER/XNAT DEVELOPMENT
+                            # Only run this analysis if SNR is in the scan name
+                            x = re.search('SNR', fname)
+                            if x:
+                                y = 1
+                            try:
+                                print(y)
+                                print('This scan WAS acquired for SNR and Uniformity tests.')
+                            except:
+                                print('This scan WAS NOT acquired for SNR and Uniformity test.')
+                                exit(1)  # exit code
+                            ########################
+
                             folder = fname
                             pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
 
@@ -255,7 +269,7 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
         for ee in range(10):
             plt.plot(outputs[ee], 'b')
         plt.plot(mean_output, 'r')
-        plt.xlabel('Voxels')
+        plt.xlabel('Pixel Number')
         plt.ylabel('Signal')
         plt.show()
 
