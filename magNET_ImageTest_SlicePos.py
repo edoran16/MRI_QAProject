@@ -29,15 +29,13 @@ ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
 
 try:
     xdim, ydim, zdim = dims
-    OrthoSlicer3D(imdata).show()  # look at 3D volume data
+    # OrthoSlicer3D(imdata).show()  # look at 3D volume data
 except ValueError:
     print('DATA INPUT ERROR: this is 2D image data')
     sys.exit()
 
 # create 3D mask
 mask3D, no_slices = spf.create_3D_mask(imdata, dims)
-
-# OrthoSlicer3D(imdata).show()  # look at 3D volume data
 
 # initialise variables for plotting results
 error = []
@@ -129,7 +127,6 @@ for zz in range(start_slice, last_slice+1):
         # print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
     else:
         remove_lines = edgede  # edge/dilation method
-        # print(remove_lines.dtype, np.min(remove_lines), np.max(remove_lines))
 
     lines_im = phmask.copy()
     # LINE DETECTION
@@ -291,14 +288,8 @@ for zz in range(start_slice, last_slice+1):
     cv2.line(hmarker_im, src2, dst2, (0, 0, 255), 1)  # diagonal line between angled rods
     cv2.line(hmarker_im, src3, dst3, (0, 0, 255), 1)
 
-    # cv2.imshow('horiz. marker image', hmarker_im.astype('uint8'))
-    # cv2.waitKey(0)
-
     cv2.line(vmarker_im, src1, src3, (0, 0, 255), 1)
     cv2.line(vmarker_im, dst1, dst3, (0, 0, 255), 1)
-
-    # cv2.imshow('vert. marker image', vmarker_im.astype('uint8'))
-    # cv2.waitKey(0)
 
     # compute the Euclidean distance between the midpoints (output in terms of number of voxels)
     # horizontal lines
@@ -382,27 +373,22 @@ for zz in range(start_slice, last_slice+1):
 slices_vec = np.linspace(start_slice+1, last_slice+1, idx)
 
 plt.figure()
-# plt.subplot(131)
 plt.plot(slices_vec, distance)
 plt.xlim([1, no_slices])
 plt.xlabel('Slice Number')
 plt.ylabel('Measured Distance (mm)')
-# plt.title('Slice Number vs. Distance')
 plt.show()
 
 plt.figure()
-# plt.subplot(132)
 plt.plot(slices_vec, pos_m)
 plt.plot(slices_vec, pos_c)
 plt.xlim([1, no_slices])
 plt.xlabel('Slice Number')
 plt.ylabel('Position (mm)')
 plt.legend(['Measured', 'Calculated'])
-# plt.title('Slice Number vs. Distance')
 plt.show()
 
 plt.figure()
-# plt.subplot(133)
 plt.plot(slices_vec, error)
 plt.plot(slices_vec, np.repeat(-2, idx), 'r')
 plt.plot(slices_vec, np.repeat(2, idx), 'r')
@@ -411,7 +397,6 @@ plt.xlim([1, no_slices])
 plt.xlabel('Slice Number')
 plt.ylabel('Slice Position Error (mm)')
 plt.legend(['Error', 'Pass/Fail Region'], loc='upper right', bbox_to_anchor=(1, 0.9), fontsize='x-small')
-# plt.title('Slice Number vs. Slice Position Error')
 plt.show()
 
 # mean error
@@ -460,40 +445,33 @@ sola_error = sola_error[1:30]
 sola_metrics = []# mean/SD/range
 
 plt.figure()
-# plt.subplot(221)
 plt.plot(slices_vec, distance)
 plt.plot(slices_vec, sola_distance)
 plt.xlim([1, no_slices])
 plt.xlabel('Slice Number')
 plt.ylabel('Measured Distance (mm)')
 plt.legend(['Python', 'Manual'])
-# plt.title('Measured Rod Distance')
 plt.show()
 
 plt.figure()
-# plt.subplot(222)
 plt.plot(slices_vec, pos_m)
 plt.plot(slices_vec, sola_pos_m)
 plt.xlim([1, no_slices])
 plt.xlabel('Slice Number')
 plt.ylabel('Measured Position (mm)')
 plt.legend(['Python', 'Manual'])
-# plt.title('Measured Position')
 plt.show()
 
 plt.figure()
-# plt.subplot(223)
 plt.plot(slices_vec, pos_c)
 plt.plot(slices_vec, sola_pos_c)
 plt.xlim([1, no_slices])
 plt.xlabel('Slice Number')
 plt.ylabel('Calculated Position (mm)')
 plt.legend(['Python', 'Manual'])
-# plt.title('Calculated Position')
 plt.show()
 
 plt.figure()
-# plt.subplot(224)
 plt.plot(slices_vec, error)
 plt.plot(slices_vec, sola_error)
 plt.plot(slices_vec, np.repeat(-2, len(slices_vec)), 'r')
@@ -503,7 +481,6 @@ plt.xlim([1, no_slices])
 plt.xlabel('Slice Number')
 plt.ylabel('Slice Position Error (mm)')
 plt.legend(['Python', 'Manual', 'Pass/Fail Region'], loc='upper right', bbox_to_anchor=(1, 0.9), fontsize='x-small')
-# plt.title('Position Error')
 plt.show()
 
 

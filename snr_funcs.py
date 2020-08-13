@@ -115,7 +115,6 @@ def snr_meta(dicomfile):
     rows = rows.value
     cols = dicomfile[0x0028, 0x0011]
     cols = cols.value
-    matrix_size = [rows, cols]
 
     # per-frame functional group sequence
     elem = dicomfile[0x5200, 0x9230]  # Per-frame Functional Groups Sequence
@@ -143,7 +142,6 @@ def snr_meta(dicomfile):
         Tx_Freq = zz.TransmitterFrequency
 
     """ (0018, 9112) MR Timing and Related Parameters Sequence """
-
     elem9 = elem7.MRTimingAndRelatedParametersSequence
     for aa in elem9:
         TR = aa.RepetitionTime
@@ -157,15 +155,9 @@ def snr_meta(dicomfile):
 
 
 def check_ROI(roi_mask, phantom_image):
-    # phantom_image is binary mask. Need to convert to greyscale.
+    # phantom_image is binary mask. Convert to greyscale.
     if np.max(phantom_image) == 1:  # binary
         phantom_image = phantom_image * 255
-
-    # check ROI does not cover phantom i.e. covers any foreground signal
-    # cv2.imshow('ROI mask', roi_mask)
-    # cv2.waitKey(0)
-    # cv2.imshow('Phantom Mask', phantom_image)
-    # cv2.waitKey(0)
 
     sum_image = roi_mask + phantom_image
     sum_image = sum_image > 255
@@ -201,17 +193,6 @@ def sort_import_data(directpath, geometry, pt):
                                                                                                              fname):
                             print('Loading ...', fname)
 
-                            # FOR XNAT DOCKER DEVELOPMENT
-                            x = re.search('moo', fname)
-                            if x:
-                                y = 1
-                            try:
-                                print(y)
-                                print('This scan WAS acquired for the SNR test.')
-                            except:
-                                print('This scan WAS NOT acquired for the SNR test.')
-                                exit(1)
-                            ########################
                             folder = fname
                             pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
 
@@ -219,10 +200,8 @@ def sort_import_data(directpath, geometry, pt):
                                 for file in it:
                                     path = "{0}{1}".format(pathtodicom, file.name)
 
-                            ds, imdata, df, dims = dicom_read_and_write(path,
-                                                                        writetxt=False)  # function from DICOM_test.py
+                            ds, imdata, df, dims = dicom_read_and_write(path, writetxt=False)  # function from DICOM_test.py
 
-                            # sd, pn = dicom_geo(ds)
 
                             try:
                                 xdim, ydim = dims
@@ -366,12 +345,11 @@ def get_signal_value(imdata, pc_row, pc_col, quad_centres):
 def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=None,
                          marker_im2=None):
     # Background ROIs according to MagNET protocol
-    # TODO: adapt ROI function to correct ROI placement if there is an error re: 20x20 coverage of background ONLY.
     # auto detection of 4 x background ROI samples (one in each corner of background)
     dims = np.shape(mask)
     bin_mask = mask.astype('uint8')
 
-    # for noise stuff
+    # for noise
     if marker_im2 == []:
         bin_mask2 = cv2.cvtColor(255 - mask, cv2.COLOR_GRAY2BGR)  # grayscale to colour
         bin_mask2 = bin_mask2.astype('uint8')
@@ -408,7 +386,6 @@ def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_grap
     bROI5 = np.zeros(np.shape(mask))
 
     # Background ROIs according to MagNET protocol
-    # TODO: adapt ROI function to correct ROI placement if there is an error re: 20x20 coverage of background ONLY.
     if caseT:
         bROI1[mid_row1 - 10:mid_row1 + 10, min_col - 10:min_col + 10] = 255  # top left
         marker_im[mid_row1 - 10:mid_row1 + 10, min_col - 10:min_col + 10] = (0, 0, 255)
@@ -434,7 +411,6 @@ def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_grap
         marker_im2[mid_row2 - 30:mid_row2 - 10, min_col - 10] = 255
         bROI3_check = check_ROI(bROI3, bin_mask)
 
-        # TODO: check that this fits below phantom.... if not then place on top of phantom
         bROI4[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = 255  # bottom centre
         marker_im[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = (0, 140, 255)
         marker_im2[mid_row2 + 10, pc_col - 10:pc_col + 10] = 255
@@ -476,7 +452,6 @@ def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_grap
         marker_im2[mid_row2 - 10:mid_row2 + 10, min_col - 25] = 255
         bROI3_check = check_ROI(bROI3, bin_mask)
 
-        # TODO: check that this fits below phantom.... if not then place on top of phantom
         bROI4[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = 255  # bottom centre
         marker_im[mid_row2 - 10:mid_row2 + 10, pc_col - 10:pc_col + 10] = (0, 140, 255)
         marker_im2[mid_row2 + 10, pc_col - 10:pc_col + 10] = 255
@@ -512,7 +487,6 @@ def draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_grap
 
 def get_background_noise_value(imdata, bROIs):
     # background/noise voxel values (don't use greyscale image!!)
-
     bROI1 = bROIs[0]
     bROI2 = bROIs[1]
     bROI3 = bROIs[2]
@@ -631,7 +605,6 @@ def draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=True, ima
     dims = np.shape(mask)
 
     idx = np.where(mask)  # returns indices where the phantom exists (from Otsu threshold)
-    rows = idx[0]
     cols = idx[1]
 
     min_col = np.min(cols)  # first column of phantom

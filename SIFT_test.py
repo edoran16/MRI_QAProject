@@ -1,21 +1,17 @@
 """Programming Computer Vision with Python"""
 
-#include <boost/whatever.hpp>
+# include <boost/whatever.hpp>
 
 import os
-from PIL import Image
 from DICOM_test import dicom_read_and_write
 import cv2
 import sys
 import numpy as np
 from skimage import filters
-from skimage.morphology import convex_hull_image, convex_hull_object, opening
+from skimage.morphology import convex_hull_image, opening
 from skimage import exposure as ex
 import pysift
 import sift
-import matplotlib.pyplot as plt
-from skimage.measure import profile_line, label, regionprops
-
 
 directpath = "MagNET_acceptance_test_data/scans/"
 folder = "42-SLICE_POS"
@@ -48,7 +44,6 @@ for imslice in np.linspace(0, no_slices-1, no_slices, dtype=int):
         img = imdata[imslice, :, :]  #sagittal
     if slice_dim == 1:
         img = imdata[:, imslice, :]  # coronal
-        # TODO: might need to "squeeze out" middle dimension?
     if slice_dim == 2:
         img = imdata[:, :, imslice]  # transverse
 
@@ -67,17 +62,9 @@ for imslice in np.linspace(0, no_slices-1, no_slices, dtype=int):
     ots[(new > filters.threshold_otsu(new)) == True] = 1  # Otsu threshold on weighted combination
 
     openhull = opening(ots)
-    conv_hull = convex_hull_image(openhull)  # set of pixels included in smallest convex polygon that SURROUND all white pixels in the input image
+    conv_hull = convex_hull_image(openhull)
+    # set of pixels included in smallest convex polygon that SURROUND all white pixels in the input image
     ch = np.multiply(conv_hull, 1)  # bool --> binary
-
-    # cv2.imshow('otsu', (ots * 255).astype('uint8'))
-    # cv2.waitKey(0)
-    # cv2.imshow('opening on otsu', (openhull * 255).astype('uint8'))
-    # cv2.waitKey(0)
-    # cv2.imshow('convex hull on opening', (conv_hull * 255).astype('uint8'))
-    # cv2.waitKey(0)
-    # cv2.imshow('final mask', (ch * 255).astype('uint8'))
-    # cv2.waitKey(0)
 
     fore_image = ch * img  # phantom
     back_image = (1 - ch) * img  #background
@@ -89,13 +76,9 @@ for imslice in np.linspace(0, no_slices-1, no_slices, dtype=int):
     if slice_dim == 2:
         mask3D[:, :, imslice] = ch
 
-# For slice position analysis want to do analysis on every slice but for now start with mid-slice
-# TODO: only interested in slices 7 to 36 as this is where rods are... need to detect this range!!
-# TODO: make this code work for every slice! and make measurement
-
 idx = 0
 
-for zz in np.linspace(7, 35, 29):# slices 7-->36 are indexed 6-->35, 30 slices in total
+for zz in np.linspace(7, 35, 29):  # slices 7-->36 are indexed 6-->35, 30 slices in total
     # actually want to start on index 7 so that zz-1 = 6 is slice 7
     print('Slice ', int(zz+1))
     zz = int(zz)  # slice of interest
@@ -127,8 +110,10 @@ for zz in np.linspace(7, 35, 29):# slices 7-->36 are indexed 6-->35, 30 slices i
     cv2.imshow('inverted image 2', gray2.astype('uint8'))
     cv2.waitKey(0)
 
-    kp1, dcp1 = pysift.computeKeypointsAndDescriptors(gray1, sigma=0.3, num_intervals=1, assumed_blur=0, image_border_width=10)
-    kp2, dcp2 = pysift.computeKeypointsAndDescriptors(gray2, sigma=0.3, num_intervals=1, assumed_blur=0, image_border_width=10)
+    kp1, dcp1 = pysift.computeKeypointsAndDescriptors(gray1, sigma=0.3, num_intervals=1, assumed_blur=0,
+                                                      image_border_width=10)
+    kp2, dcp2 = pysift.computeKeypointsAndDescriptors(gray2, sigma=0.3, num_intervals=1, assumed_blur=0,
+                                                      image_border_width=10)
 
     im1 = phim1.copy()
     im2 = phim2.copy()
@@ -157,7 +142,5 @@ for zz in np.linspace(7, 35, 29):# slices 7-->36 are indexed 6-->35, 30 slices i
 
     sift.plot_matches(im1, im2, kp1, kp2, scores_for_match, phmask1+phmask2, show_below=True)
 
-
-#cv2.imwrite('sift_keypoints.jpg', img)
 
 

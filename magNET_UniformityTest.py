@@ -12,8 +12,6 @@ test_object = ['FloodField_HEAD', 'FloodField_BODY']
 phantom_type = ['_NICL', '_BODY']
 geos = ['_TRA_', '_SAG_', '_COR_']
 
-# TODO: classes will be useful here I think..... change as per SNR test
-
 # Fractional uniformity/mean uniformity/stdev uniformity vectors for 'append' function
 fx = []
 fy = []
@@ -27,7 +25,7 @@ sz = []
 
 print(fx, fy, fz)
 
-for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY/SPINE
+for jj in range(len(phantom_type)):
     pt = phantom_type[jj]
     print('Fractional Uniformity analysis of', pt, test_object[jj], 'test object.')
 
@@ -267,7 +265,6 @@ for jj in range(len(phantom_type)):  # iterate between NICL/flood field and BODY
             fractional_uniformityH, meanH, stdH = uf.calc_fUniformity(signalH, uniformity_range)
             fractional_uniformityV, meanV, stdV = uf.calc_fUniformity(signalV, uniformity_range)
 
-            # TODO: check these directions are all correct
             if caseT:
                 print('Fractional X Uniformity = ', fractional_uniformityH, '(mean =', meanH.round(2), 'std. dev. =', stdH.round(2), ')')
                 print('Fractional Y Uniformity = ', fractional_uniformityV, '(mean =', meanV.round(2), 'std. dev. =', stdV.round(2), ')')

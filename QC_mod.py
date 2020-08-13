@@ -25,7 +25,6 @@ class phantomimage_dicom:
      SNR"""
 
     def __init__(self):
-        # TODO: this section will need changed to give correct path to any future data i.e. in XNAT or Prisma files
         self.directpath = "data_to_get_started/single_slice_dicom/"  # path to DICOM file
         self.filename = "image1"
         self.pathtofile = "{0}{1}".format(self.directpath, self.filename)
@@ -41,7 +40,6 @@ class phantomimage_dicom:
         # export metadata into output text file to see all entries
         with open(self.pathtofile + ".txt", "w") as f:
             print(fulldicomfile, file=f)
-            # TODO: change this to saving metadata as dataframe
         # assign image data
         imagedata = fulldicomfile.pixel_array
         imagedimensions = imagedata.shape
@@ -64,8 +62,6 @@ class phantomimage_dicom:
             plt.show()
 
         return fulldicomfile, imagedata, df, imagedimensions
-
-
 
     def return_line_profile(self, imdata, src, dst, lw, plotflag=False):
         """ Draw line profile across centre line of phantom
@@ -120,11 +116,9 @@ class phantomimage_dicom:
 
         return output
 
-
     def foreground_detection(self, imdata, plotflag=False):
         val = filters.threshold_otsu(imdata)  # OTSU threshold to segment phantom
         mask = imdata > val  # phantom mask
-        # TODO: update threshold method for alternative foreground detection
 
         phantom_edges = segmentation.find_boundaries(mask, mode='thin').astype(np.uint8)  # finds outline of mask
 
@@ -189,7 +183,6 @@ class phantomimage_dicom:
         specified as pre-processing step in IPEM Report 112.
         Input = image and kernel (default kernel is as specified in IPEM Report 12 ^^)
         Output = filtered image"""
-        # TODO: confirm that this only applies to low SNR data? How to call this function when required
 
         a = imdata.copy()  # copy of DICOM image
         imdata_conv = ndimage.convolve(a, kernel, mode='constant', cval=0.0)  # convolution of image and kernel
@@ -361,7 +354,6 @@ class MagNETdata_dicom:
     """ Class for MagNET acceptance testing data."""
 
     def __init__(self):
-        # TODO: this section will need changed to give correct path to any future data i.e. in XNAT or Prisma files
         self.directpath = "MagNET_acceptance_test_data/scans/"
         self.folder = "45-SPINE_123/resources/DICOM/files/"
         self.filename = "1.3.12.2.1107.5.2.51.182690.30000019050607313408100000039-45-1-wm8zff.dcm"
@@ -395,8 +387,6 @@ def explore_noise(mask, imdata, path, plotflag=False):
     noise_mask = ndimage.binary_dilation(mask, iterations=2)  # dilate mask to avoid edge effects when displaying noise
     noise_image = imdata * ~noise_mask  # image noise (phantom signal is masked out)
     ALLBGrndVoxelVals = noise_image[noise_mask == 0]  # voxel values from all of background
-
-    sz = ALLBGrndVoxelVals.shape
 
     nobins = 50
 
@@ -441,7 +431,6 @@ def explore_noise(mask, imdata, path, plotflag=False):
         pdf_g = stats.norm.pdf(lnspc, m1, s)  # now get theoretical values in our interval
         plt.plot(lnspc, pdf_g, label="Norm")  # plot it
 
-        # guess what :)
         m2, v = stats.rayleigh.fit(ALLBGrndVoxelVals)
         pdf_ray = stats.rayleigh.pdf(lnspc, m2, v)
         plt.plot(lnspc, pdf_ray, label="Rayleigh")
@@ -460,7 +449,7 @@ def create_report(SNR, Uint):
     print(df)
     print(df.SNR[0])
     env = Environment(loader=FileSystemLoader('.'))
-    template = env.get_template('testreport.html')
+    template = env.get_template('QC_mod_testreport.html')
 
     template_vars = {"title": "Quality Control- Basic Phantom Results",
                      "results_table": df.to_html(),
@@ -468,9 +457,9 @@ def create_report(SNR, Uint):
 
     html_out = template.render(template_vars)
 
-    #HTML(string='<img src="data_to_get_started/single_slice_dicom/image1.png">').write_pdf("testreport.pdf")
-    #HTML(string="<p> Testing... </p>").write_pdf("testreport.pdf")
-    HTML(string=html_out).write_pdf("testreport.pdf")
+    # HTML(string='<img src="data_to_get_started/single_slice_dicom/image1.png">').write_pdf("testreport.pdf")
+    # HTML(string="<p> Testing... </p>").write_pdf("testreport.pdf")
+    HTML(string=html_out).write_pdf("QC_mod_testreport.pdf")
 
     return
 

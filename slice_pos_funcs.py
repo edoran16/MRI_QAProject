@@ -9,11 +9,6 @@ import cv2
 def midpoint(ptA, ptB):
     return (ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5
 
-# bit of code
-#  if hasattr(self.RefDs, 'PixelSpacing'):  # check attribute exists
-# if hasattr(slice_id, 'RescaleSlope'):  # then save it
-                # rescaleSlope = ds.RescaleSlope
-
 
 def slice_pos_meta(dicomfile):
     """ extract metadata for slice postion info calculations
@@ -25,17 +20,6 @@ def slice_pos_meta(dicomfile):
     cols = dicomfile[0x0028, 0x0011]
     cols = cols.value
     matrix_size = [rows, cols]
-
-    # TODO: FoV and Private Tag Data Access
-    # shared_func_groups_seq = dicomfile[0x5200, 0x9229]
-    # shared_func_groups_seq = shared_func_groups_seq.value
-    # for xx in shared_func_groups_seq:
-    #     PrivateTagData = xx[0x002110fe]
-    #
-    # PrivateTagData = PrivateTagData[0]
-    # for yy in PrivateTagData:
-    #     #print(yy.value)
-    #     print(yy.value)
 
     # per-frame functional group sequence
     elem = dicomfile[0x5200, 0x9230]  # pydicom.dataelem.DataElement
@@ -55,7 +39,6 @@ def create_3D_mask(imdata, dims):
     slice_dim = slice_dim[0]
     slice_dim = slice_dim[0]
     no_slices = dims[slice_dim]
-    # print("Number of slices = ", no_slices)
     mask3D = np.zeros_like(imdata)
 
     for imslice in np.linspace(0, no_slices - 1, no_slices, dtype=int):
@@ -63,7 +46,6 @@ def create_3D_mask(imdata, dims):
             img = imdata[imslice, :, :]  # sagittal
         if slice_dim == 1:
             img = imdata[:, imslice, :]  # coronal
-            # TODO: might need to "squeeze out" middle dimension?
         if slice_dim == 2:
             img = imdata[:, :, imslice]  # transverse
 
@@ -100,7 +82,7 @@ def find_centre_and_area_of_phantom(phmask, plotflag=False):
     label_img, num = label(phmask, connectivity=phmask.ndim, return_num=True)  # labels the mask
     props = regionprops(label_img)  # returns region properties for labelled image
     cent = np.zeros([num, 2])
-    pharea = np.zeros([num, 1])  # TODO: use this to check that slice is not noise FOV
+    pharea = np.zeros([num, 1])  # used to check that slice is not noise FOV
     for xx in range(num):
         cent[xx, :] = props[xx].centroid  # central coordinate
         pharea[xx, :] = props[xx].area
@@ -177,12 +159,10 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
             for xx in range(num):
                 centtemp = props[xx].centroid
                 areatemp = props[xx].area
-                # print(areatemp)
                 # conditions for bottom long rectangular shape detection
                 if 600 < areatemp < 800:  # TODO: replace with centre of ph coords
                     if centtemp[0] > 170:  # row below (but greater than since -y axis) 170 = bottom region of phantom
                         if 100 < centtemp[1] < 150:  # col in this range is central region of phantom
-                            # print('rectangular region detected!')
                             rcntr = rcntr + 1
                             bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
                             min_row, min_col, max_row, max_col = bboxx
@@ -194,7 +174,8 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
 
                 # conditions for L and R square shape detection
                 if 100 < areatemp < 160:
-                    if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
+                    if 110 < centtemp[0] < 150:
+                        # rows in central region of phantom
                         if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
                             # print('square region detected!')
                             scntr = scntr + 1
@@ -208,9 +189,9 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
 
                 # conditions for edge L and R "square" shape detection
                 if 40 < areatemp < 50:
-                    if 110 < centtemp[0] < 150:  # rows in central region of phantom # TODO: replace with centre of ph coords
+                    if 110 < centtemp[0] < 150:
+                        # rows in central region of phantom
                         if 30 < centtemp[1] < 60 or 190 < centtemp[1] < 220:  # cols in L and R regions of phantom
-                            # print('inferior/superior square region detected!')
                             escntr = escntr + 1
                             bboxx = props[xx].bbox  # min_row, min_col, max_row, max_col
                             min_row, min_col, max_row, max_col = bboxx
@@ -239,7 +220,6 @@ def find_range_slice_pos(no_slices, mask3D, imdata, plotflag=False, savepng=Fals
     passes = np.where(pass_fail)  # passes + 1 = actual slice number
     start_slice = np.min(passes)
     last_slice = np.max(passes)
-    # print('Slice position analysis on slices', start_slice + 1, 'to', last_slice + 1)
 
     return start_slice, last_slice, pf_img_array
 
@@ -249,33 +229,10 @@ def make_video_from_img_array(img_array, dims, VideoName):
     # dims is a tuple
     # saves avi to current folder
     print('making video ! ... ')
-    # out = cv2.VideoWriter(VideoName, cv2.VideoWriter_fourcc(*"MJPG"), 2, dims)
     out = cv2.VideoWriter(VideoName, cv2.VideoWriter_fourcc(*"MP4V"), 2, dims)
     for i in range(len(img_array)):
-        # print('Frame', i + 1, '/', len(img_array))
         out.write(img_array[i])
     out.release()
     return
 
-
-#if __name__ == '__main__':
-
-    # from DICOM_test import dicom_read_and_write
-    # import os
-    #
-    # directpath = "MagNET_acceptance_test_data/scans/"
-    # folder = "42-SLICE_POS"
-    #
-    # pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
-    #
-    # with os.scandir(pathtodicom) as it:
-    #     for file in it:
-    #         path = "{0}{1}".format(pathtodicom, file.name)
-    #
-    # ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
-    # mat_sz, st, pixels_space = slice_pos_meta(ds)
-    #
-    # print('Matrix size = ', mat_sz[0], 'x', mat_sz[1])
-    # print('Slice thickness = ', st, 'mm')
-    # print('Pixel Dimensions = ', pixels_space, 'mm^2')
 

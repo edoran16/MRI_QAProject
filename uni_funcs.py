@@ -2,15 +2,12 @@ from pylab import *
 from skimage import filters
 from skimage.morphology import convex_hull_image, opening
 from skimage import exposure as ex
-from skimage.measure import label, regionprops
 import cv2
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 from DICOM_test import dicom_read_and_write
 from nibabel.viewers import OrthoSlicer3D
 
-from skimage.measure import profile_line, label, regionprops
+from skimage.measure import label, regionprops
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -35,19 +32,10 @@ def create_2D_mask(img, show_graphical=False):
     new = (w1 * img) + (w2 * h)  # weighted combination of original image and hist eq version
     ots[(new > filters.threshold_otsu(new)) == True] = 255  # Otsu threshold on weighted combination
 
-    # cv2.imshow('ots', ots)
-    # cv2.waitKey(0)
-
     eroded_ots = cv2.erode(ots, None, iterations=3)
     dilated_ots = cv2.dilate(eroded_ots, None, iterations=3)
-    #
-    # cv2.imshow('dilated', dilated_ots)
-    # cv2.waitKey(0)
 
     openhull = opening(dilated_ots)
-
-    # cv2.imshow('openhull', openhull)
-    # cv2.waitKey(0)
 
     conv_hull = convex_hull_image(openhull)
 
@@ -88,19 +76,6 @@ def sort_import_data(directpath, geometry, pt, show_graphical=False, imagepath=N
                     if re.search(pt, fname):
                         if not re.search('_REPEAT', fname) and not re.search('_PR', fname) and not re.search('_OIL',fname):
                             print('Loading ...', fname)
-
-                            ## DOCKER/XNAT DEVELOPMENT
-                            # Only run this analysis if SNR is in the scan name
-                            x = re.search('SNR', fname)
-                            if x:
-                                y = 1
-                            try:
-                                print(y)
-                                print('This scan WAS acquired for SNR and Uniformity tests.')
-                            except:
-                                print('This scan WAS NOT acquired for SNR and Uniformity test.')
-                                exit(1)  # exit code
-                            ########################
 
                             folder = fname
                             pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
@@ -151,15 +126,6 @@ def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=None):
     else:
         mask = bin_mask
 
-        # cv2.imshow('mask', (bin_mask * 255))
-        # cv2.waitKey(0)
-        # cv2.imshow('otsu phantom', (1-oi)*255)
-        # cv2.waitKey(0)
-        # cv2.imshow('err', err * 255)
-        # cv2.waitKey(0)
-        # cv2.imshow('new mask', (new_mask * 255))
-        # cv2.waitKey(0)
-
     # get centre of phantom and define ROI from there
     label_img, num = label(mask, connectivity=img.ndim, return_num=True)  # labels the mask
 
@@ -172,19 +138,12 @@ def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=None):
     marker_im = marker_im.astype('uint8')
     marker_im = cv2.cvtColor(marker_im, cv2.COLOR_GRAY2BGR)  # grayscale to colour
 
-    dims = np.shape(img)
-    # cv2.line src/dst defined x, y same orientation and row, col. [0,0] = top left corner
-    # PROOF OF CONCEPT LINES
-    # cv2.line(marker_im, (10, 41), (246, 41), (255, 0, 255), 1)
-    # cv2.line(marker_im, (10, 215), (246, 215), (255, 0, 255), 1)
-
     cv2.line(marker_im, (pc_col + 10, pc_row + 10), (pc_col + 10, pc_row - 10), (0, 0, 255), 1)
     cv2.line(marker_im, (pc_col + 10, pc_row - 10), (pc_col - 10, pc_row - 10), (0, 0, 255), 1)
     cv2.line(marker_im, (pc_col - 10, pc_row - 10), (pc_col - 10, pc_row + 10), (0, 0, 255), 1)
     cv2.line(marker_im, (pc_col - 10, pc_row + 10), (pc_col + 10, pc_row + 10), (0, 0, 255), 1)
 
     area = ((pc_col + 10) - (pc_col - 10)) * ((pc_row + 10) - (pc_row - 10))
-    # print('Centre ROI Area =', area)
     area_aim = 20 * 20
     if area != area_aim:
         print('Signal ROI area is too large/too small')
@@ -201,12 +160,6 @@ def draw_centre_ROI(bin_mask, img, caseT, show_graphical=True, imagepath=None):
 def get_signal_value(imdata, pc_r, pc_c):
     # signal values corresponding to voxels inside each signal ROI (don't use greyscale image!)
     signal0 = np.mean(imdata[pc_r - 10:pc_r + 10, pc_c - 10:pc_c + 10])
-
-    # test = imdata.copy()
-    # test[pc_row - 10:pc_row + 10, pc_col - 10:pc_col + 10] = 0
-    # plt.figure()
-    # plt.imshow(test)
-    # plt.show()
 
     print('Mean signal (total) =', signal0)
 
@@ -227,14 +180,12 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
 
     for xx in np.linspace(-4, 5, 10):
         if caseH:  # horizontal lines
-            # print('HORIZONTAL PROFILE')  # drawn top of image to bottom of image
             src2 = (src[0], int(src[1] + xx))  # starting point (x, y)
             dst2 = (dst[0], int(dst[1] + xx))  # finish point
             # to get line profile output
             rows = np.repeat(src2[1], dims[0])
             cols = np.linspace(src2[0], dst2[0], dims[1])
         if caseV:  # vertical lines
-            # print('VERTICAL PROFILE')  # drawn LHS to RHS of image
             src2 = (int(src[0] + xx), int(src[1]))  # starting point
             dst2 = (int(dst[0] + xx), int(dst[1]))  # finish point
             # to get line profile output
@@ -245,7 +196,6 @@ def obtain_uniformity_profile(imdata, src, dst, pc_row, pc_col, dist80, caseH, c
         outputs.append(output)
 
         if xx == 0:
-            # print('centre line!')
             improfile = display_profile_line(improfile, src2, dst2, pc_row, pc_col, dist80, caseH, caseV, linecolour=(0, 0, 255), show_graphical=False)
         else:
             improfile = display_profile_line(improfile, src2, dst2, pc_row, pc_col, dist80, caseH, caseV, linecolour=(255, 0, 0), show_graphical=False)
@@ -286,20 +236,10 @@ def display_profile_line(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV,
     if caseH:
         rows = np.repeat(int(src_row), dims[0])
         cols = np.linspace(int(src_col-1), int(dst_col-1), dims[1])
-        # Add 160 mm lines dist80mm = 82
-        # spec_rows = np.linspace(0, dims[0]-1, dims[0])
-        # spec_cols = np.repeat(pc_col - dist80, dims[1])
-        # spec_rows2 = np.linspace(0, dims[0] - 1, dims[0])
-        # spec_cols2 = np.repeat(pc_col + dist80, dims[1])
 
     if caseV:
         rows = np.linspace(int(src_row-1), int(dst_row-1), dims[0])
         cols = np.repeat(int(src_col), dims[1])
-        # Add 160 mm lines dist80mm = 82
-        # spec_rows = np.repeat(pc_row - dist80, dims[0])
-        # spec_cols = np.linspace(0, dims[1] - 1, dims[1])
-        # spec_rows2 = np.repeat(pc_row + dist80, dims[0])
-        # spec_cols2 = np.linspace(0, dims[1] - 1, dims[1])
 
     imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)] = linecolour
 
@@ -314,9 +254,6 @@ def display_profile_line(imdata, src, dst, pc_row, pc_col, dist80, caseH, caseV,
             cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row + dist80), (0, 0, 0), thickness=2, tipLength=0.1)
             cv2.arrowedLine(imdata, (pc_col, pc_row), (pc_col, pc_row - dist80), (0, 0, 0), thickness=2, tipLength=0.1)
             cv2.putText(imdata, "160 mm", (pc_col + 10, pc_row), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
-
-    # imdata[np.array([spec_rows], dtype=int), np.array([spec_cols], dtype=int)] = (0, 255, 0)
-    # imdata[np.array([spec_rows2], dtype=int), np.array([spec_cols2], dtype=int)] = (0, 255, 0)
 
     # plot sampled line on phantom to visualise where output comes from
     if show_graphical:

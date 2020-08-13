@@ -78,7 +78,8 @@ for ii in range(len(coils)):
                         # get signal value
                         mean_signal = sf.get_spine_signal_value(imdata[sl, :, :], pc_row, pc_col)
 
-                        factor = 0.655  # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
+                        factor = 0.655
+                        # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
                         # draw background ROIs
                         bROIs = sf.draw_spine_background_ROIs(mask, marker_im, pc_row, show_graphical=False, imagepath=fullimagepath)
 
@@ -181,8 +182,4 @@ plt.title('Uniformity Results: Spine Test Object')
 plt.savefig(imagepath + 'all_spine_uniformities.png', orientation='landscape', transparent=True,
                     bbox_inches='tight', pad_inches=0.1)
 plt.show()
-#
-#
-#
-#   # if tick == 0:
-#     #     print('!!!Element series ' + rx[1:] + ' does not exist!!!')
+

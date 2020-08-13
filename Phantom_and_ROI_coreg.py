@@ -83,11 +83,6 @@ def rigid_alignment(dst, ref_points, pathtosave, plotflag=False):
         cv2.imshow('NewImg', img4)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
-    # # crop away border and save aligned images
-    # h, w = img2.shape[:2]
-    # border = (w + h)/20
-
     return img4
 
 
@@ -130,23 +125,11 @@ def detect_circles(img_with_ROI, img_orig, pathtosave, plotflag=False):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    #img4 = cv2.medianBlur(img_gray, 5)
-    #print(type(img4), img4.dtype, np.min(img4), np.max(img4))
-
-    #cv2.imshow('Median Blur', img4.astype('uint8'))
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
-
-    #cimg = cv2.cvtColor(np.uint16(img4), cv2.COLOR_GRAY2BGR)
-    # TODO: greyscale to RGB version of greyscale if want to put circles in colour
-    #print(type(cimg), cimg.dtype, np.min(cimg), np.max(cimg))
-
     circles = cv2.HoughCircles(np.uint8(img_gray), cv2.HOUGH_GRADIENT, 1, 100, param1=255, param2=10, minRadius=10, maxRadius=50)
 
     circles = np.uint16(np.round(circles))
     # [coordinate1, coordinate2, radius]
     print(circles)
-    # TODO: detected circle is not IDENTICAL to original circle.... need to think about this...
 
     for i in circles[0, :]:
         # draw the outer circle
@@ -172,7 +155,7 @@ def replicate_ROI(circle_coords, img_to_draw_on, pathtosave, plotflag=False):
         # draw the outer circle
         cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), i[2], 1, 1)
         # draw the center of the circle
-        #cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), 2, 0, 3)
+        cv2.circle(img_to_draw_ROI_on, (i[0], i[1]), 2, 0, 3)
 
     if plotflag:
         cv2.imshow('ROI Replicated', img_to_draw_ROI_on.astype('uint8'))
@@ -238,7 +221,7 @@ M = np.float64([[1, 0, 20], [0, 1, 20]])
 dst = cv2.warpAffine(img, M, (cols, rows))
 """dst = routine QA image to be registered with baseline QA scan"""
 
-initialplot = False
+initialplot = True
 
 if initialplot:
     cv2.imshow('img', img)
@@ -252,9 +235,9 @@ if initialplot:
 
 images = [img, dst]
 
-reference_points = get_ref_points(images, plotflag=False)
+reference_points = get_ref_points(images, plotflag=True)
 
-img_aligned = rigid_alignment(dst, reference_points, path, plotflag=False)
+img_aligned = rigid_alignment(dst, reference_points, path, plotflag=True)
 
 y_true, skipb, skipa = label_img(img)
 y_pred, skipd, skipc = label_img(img_aligned)
@@ -269,15 +252,15 @@ draw_img = img.copy()
 ROIim = draw_circle_ROI(draw_img, path, True)
 """ ROIim would be the baseline QA image to be matched to."""
 
-circles_detected = detect_circles(ROIim, draw_img, path, False)  # draw_img used here only for plotting....
+circles_detected = detect_circles(ROIim, draw_img, path, True)  # draw_img used here only for plotting
 
 draw_img2 = img_aligned.copy()
 
-replicate_ROI(circles_detected, draw_img2, path, False)
+replicate_ROI(circles_detected, draw_img2, path, True)
 
 draw_img3 = img_aligned.copy()
 
-ROI_vals = get_ROI_voxels(draw_img3, circles_detected, False)  # greyscale values
+ROI_vals = get_ROI_voxels(draw_img3, circles_detected, True)  # greyscale values
 
 # univariate distribution of ROI values
 ax = sns.distplot(ROI_vals)

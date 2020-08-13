@@ -3,7 +3,6 @@ from pylab import *
 from skimage import filters
 from skimage.morphology import convex_hull_image, opening
 from skimage import exposure as ex
-from skimage.measure import label, regionprops
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,19 +28,10 @@ def create_2D_mask(img):
     new = (w1 * img) + (w2 * h)  # weighted combination of original image and hist eq version
     ots[(new > filters.threshold_otsu(new)) == True] = 255  # Otsu threshold on weighted combination
 
-    # cv2.imshow('ots', ots)
-    # cv2.waitKey(0)
-
     eroded_ots = cv2.erode(ots, None, iterations=3)
     dilated_ots = cv2.dilate(eroded_ots, None, iterations=3)
-    #
-    # cv2.imshow('dilated', dilated_ots)
-    # cv2.waitKey(0)
 
     openhull = opening(dilated_ots)
-
-    # cv2.imshow('openhull', openhull)
-    # cv2.waitKey(0)
 
     conv_hull = convex_hull_image(openhull)
 
@@ -97,7 +87,6 @@ def smooth(x, window_len=5, window='hanning'):
         raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
     s = np.r_[x[window_len - 1:0:-1], x, x[-2:-window_len - 1:-1]]
-    # print(len(s))
     if window == 'flat':  # moving average
         w = np.ones(window_len, 'd')
     else:
@@ -119,7 +108,6 @@ def smooth_demo():
     plt.plot(ones(ws))
 
     windows = ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']
-
 
     for w in windows[1:]:
         eval('plot(' + w + '(ws) )')

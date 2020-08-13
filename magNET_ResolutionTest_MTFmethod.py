@@ -21,15 +21,14 @@ from skimage.morphology import opening
 directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/Resolution_Images/"
 
-show_graphical = False
+show_graphical = True
 
 with os.scandir(directpath) as the_folders:
     for folder in the_folders:
         fname = folder.name
         if re.search('-RES_', fname):
             print(folder.name)
-            # TODO: iterate between [256, 512] versions of ['COR', 'SAG', 'TRA'] and repeat analysis
-            # FIRST ATTEMPT: COR 256 ANALYSIS
+            # CODE DEVELOPMENT ON COR 256 SCAN DATA
             if re.search('512', fname):
                 if re.search('_COR_', fname):
                     folder = fname
@@ -54,7 +53,6 @@ except ValueError:
     print('DATA INPUT ERROR: this is 3D image data')
     OrthoSlicer3D(imdata).show()  # look at 3D volume data
     sys.exit()
-
 
 # create mask
 mask = rf.create_2D_mask(img)  # watch out for grayscale mask!! [0, 255]
@@ -175,7 +173,7 @@ if show_graphical:
     cv2.waitKey(0)
 
 """DRAW LINE PROFILE FOR EDGE RESPONSE FUNCTION"""
-# TODO: check if line has to perpendicular to edge, or in FE/PE direction
+# Line perpendicular to edges
 # VERTICAL LINE ANGLED
 # src = (half_col, min_row)  # starting point x, y coordinate (column, row)
 # dst = (half_col, max_row)  # finish point x, y coordinate (column, row)
@@ -189,12 +187,10 @@ print('Intercept = ', c)
 src_x = half_col_left-10
 src_y = (m*src_x) + c
 src = (src_x, src_y)
-# src = (half_col_left, half_row_left)  # starting point x, y coordinate (column, row)
 
 dst_x = half_col_left+10
 dst_y = (m*dst_x) + c
 dst = (dst_x, dst_y)
-# dst = (half_col_right, half_row_right)  # finish point x, y coordinate (column, row)
 print('Source = ', src)
 print('Destination = ', dst)
 
@@ -224,17 +220,16 @@ improfile = np.copy(img)
 improfile[np.array(np.round(perp_rows), dtype=int), np.array(np.round(perp_cols), dtype=int)] = 255
 
 # plot sampled line on phantom to visualise where output comes from
-# plt.figure()
-# plt.imshow(improfile)
-# plt.colorbar()
-# plt.axis('off')
-# plt.show()
+plt.figure()
+plt.imshow(improfile)
+plt.colorbar()
+plt.axis('off')
+plt.show()
 
 """EDGE RESPONSE FUNCTION"""
 # voxel values along specified line. specify row then column (y then x)
 output = profile_line(img, (src[1], src[0]), (dst[1], dst[0]))  # signal profile
 """VOXEL X AXIS VARIABLE"""
-# voxels = np.arange(0, len(output)) - int(len(output)/2)   # define 0 mm as edge cross section
 voxels = np.arange(0, len(output))  # voxel number
 
 smooth_len = int(0.5*len(output))  # has to be an odd value
@@ -249,12 +244,11 @@ plt.legend(['Signal Profile', 'Smoothed Signal Profile'])
 plt.title('Smoothing Step Response')
 plt.show()
 
-# FOLLOWING THE ANALYSIS IN THIS PAPER vv
+# FOLLOWING THE ANALYSIS IN THIS PAPER
 # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6236841/pdf/ACM2-19-244.pdf
 f = interpolate.interp1d(voxels, soutput)  # spline interpolation
 interp_length = 10000
 """VOXEL X AXIS VARIABLE"""
-# voxnew = np.linspace(0, len(soutput)-1, interp_length) - int(len(soutput)/2)  # define new voxel/distance vector
 voxnew = np.linspace(0, len(soutput)-1, interp_length)  # define new voxel/distance vector
 
 outnew = f(voxnew)   # use interpolation function returned by `interp1d`
@@ -357,8 +351,6 @@ for dd in np.linspace(0, len(ERF)-2, len(ERF)-1):
     diff = np.abs(ERF[int(dd+1)] - ERF[int(dd)])
     diff_output.append(diff)
 
-sys.exit()
-
 diff_zeroed = diff_output - np.min(diff_output)  # zero the LSF
 diff_norm = diff_zeroed/np.max(diff_zeroed)  # normalise LSF
 LSF = diff_norm
@@ -372,16 +364,14 @@ plt.xlabel('Position (mm)')
 plt.title('Line Spread Function')
 
 """FOURIER TRANSFORM OF LSF = MTF"""
-MTF = np.fft.fft(LSF)  # fourier transform of LSF
-# MTF = np.fft.fftshift(np.fft.fft(LSF))  # shifted fourier transform of LSF
-# MTF = np.abs(np.fft.fftshift(np.fft.fft(LSF)))  # absolute value norm of the FT
+MTF = np.abs(np.fft.fftshift(np.fft.fft(LSF)))  # absolute value norm of the FT
 # MTF = np.abs(np.fft.fftshift(np.fft.fft(LSF))**2)  # squared shifted abs
 # MTF = np.log(np.abs(np.fft.fftshift(np.fft.fft(LSF))**2))  # log of squared shifted abs
-# MTF = MTF/np.max(MTF)  # normalised MTF
+MTF = MTF/np.max(MTF)  # normalised MTF
 
 # sampling_interval = len(output)/interp_length
 FOV = 250  # FOV specified in MagNET protocol
-matrix_size = 512  # for this particular data set. Can also be 256. TODO: Check DICOM header data
+matrix_size = 512  # for this particular data set. Can also be 256.
 sampling_interval = FOV/matrix_size
 
 no_of_pixels = voxels + 1
@@ -397,8 +387,6 @@ plt.xlabel('Spatial Frequency (cycles/mm)')
 plt.title('Modulation Transfer Function')
 plt.show()
 
-"""STOP HERE FOR NOW"""
-sys.exit()
 
 
 

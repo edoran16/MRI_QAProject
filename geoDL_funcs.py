@@ -66,19 +66,10 @@ def create_2D_mask(img, show_graphical=False, imagepath=None):
     new = (w1 * img) + (w2 * h)  # weighted combination of original image and hist eq version
     ots[(new > filters.threshold_otsu(new)) == True] = 255  # Otsu threshold on weighted combination
 
-    # cv2.imshow('ots', ots)
-    # cv2.waitKey(0)
-
     eroded_ots = cv2.erode(ots, None, iterations=3)
     dilated_ots = cv2.dilate(eroded_ots, None, iterations=3)
-    #
-    # cv2.imshow('dilated', dilated_ots)
-    # cv2.waitKey(0)
 
     openhull = opening(dilated_ots)
-
-    # cv2.imshow('openhull', openhull)
-    # cv2.waitKey(0)
 
     conv_hull = convex_hull_image(openhull)
 
@@ -106,17 +97,6 @@ def geo_meta(dicomfile):
     cols = cols.value
     matrix_size = [rows, cols]
 
-    # TODO: FoV and Private Tag Data Access
-    # shared_func_groups_seq = dicomfile[0x5200, 0x9229]
-    # shared_func_groups_seq = shared_func_groups_seq.value
-    # for xx in shared_func_groups_seq:
-    #     PrivateTagData = xx[0x002110fe]
-    #
-    # PrivateTagData = PrivateTagData[0]
-    # for yy in PrivateTagData:
-    #     #print(yy.value)
-    #     print(yy.value)
-
     # per-frame functional group sequence
     elem = dicomfile[0x5200, 0x9230]  # pydicom.dataelem.DataElement
     seq = elem.value  # pydicom.sequence.Sequence
@@ -131,7 +111,7 @@ def geo_meta(dicomfile):
 
 
 def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False, imagepath=None):
-    # src and dst are tuples of (x, y) i.e. (column, row)
+    ''' src and dst are tuples of (x, y) i.e. (column, row)'''
 
     # draw line profile across centre line of phantom
     outputs = []
@@ -141,27 +121,15 @@ def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False, imagepa
     improfile = improfile.astype('uint8')
     improfile = cv2.cvtColor(improfile, cv2.COLOR_GRAY2BGR)  # grayscale to colour
 
-    # cv2.imshow('test', improfile)
 
-    dims = np.shape(imdata)
-
-    if caseH:  # horizontal lines
-        # print('HORIZONTAL PROFILE')  # drawn top of image to bottom of image
+    if caseH:  # horizontal lines drawn LHS to RHS of image
         # to get line profile output
         rows = np.repeat(src[1], (dst[0]+1)-src[0])
         cols = np.linspace(src[0], dst[0], (dst[0]+1)-src[0])
-    if caseV:  # vertical lines
-        # print('VERTICAL PROFILE')  # drawn LHS to RHS of image
+    if caseV:  # vertical lines drawn top of image to bottom of image
         # to get line profile output
         rows = np.linspace(src[1], dst[1], (dst[1]+1)-src[1])
         cols = np.repeat(src[0], (dst[1]+1)-src[1])
-
-        # test = imdata.copy()
-        # test[src[1], src[0]] = 15000
-        # test[dst[1], dst[0]] = 25000
-        # plt.figure()
-        # plt.imshow(test)
-        # plt.show()
 
     output = imdata[np.array(np.round(rows), dtype=int), np.array(np.round(cols), dtype=int)]
 
@@ -185,11 +153,9 @@ def obtain_profile(imdata, src, dst, caseH, caseV, show_graphical=False, imagepa
 
 
 def display_profile_line(imdata, src, dst, caseH, caseV, linecolour, show_graphical=False, imagepath=None):
-    # display profile line on phantom: from source code of profile_line function
+    '''display profile line on phantom: from source code of profile_line function'''
     src_col, src_row = np.asarray(src, dtype=float)  # src = (x, y) = (col, row)
     dst_col, dst_row = np.asarray(dst, dtype=float)
-
-    dims = np.shape(imdata)
 
     if caseH:
         rows = np.repeat(int(src_row), (dst[0]+1)-src[0])

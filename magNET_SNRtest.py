@@ -1,16 +1,9 @@
-""" MagNET SNR measurements. Aim to get code to work on head, body and spine data """
+""" MagNET SNR measurements. Analysis for head, body coil data """
 
-# load SNR TRA NICL
-# get code working - then extend to SAG and COR
-# then extend to oil phantom
-# then look at body coil
-
-import sys
 import snr_funcs as sf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
 
 directpath = "MagNET_acceptance_test_data/scans/"
 imagepath = "MagNET_acceptance_test_data/SNR_Images/"
@@ -18,8 +11,6 @@ imagepath = "MagNET_acceptance_test_data/SNR_Images/"
 test_object = ['FloodField_HEAD', 'FloodField_BODY']
 phantom_type = ['_NICL', '_BODY']
 geos = ['_TRA_', '_SAG_', '_COR_']
-
-# TODO: classes will be useful here I think.....
 
 for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/SPINE
     pt = phantom_type[jj]
@@ -178,12 +169,6 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
             print(auto_constants_df)
             auto_constants_df.to_html('snr_normalisation_constants.html')
 
-            # APPENDING EVERYTHING
-            # results_df = auto_df.append(auto_df2)  # ,
-            # results_df2 = results_df.append(auto_constants_df)  # , ignore_index=True
-            # results_df2 = results_df2.fillna('-')
-            # print(results_df2)
-
             # CONCAT EVERYTHING
             results_df = pd.concat([auto_df, auto_df2], join='outer')
             results_df2 = pd.concat([results_df, auto_constants_df])  # , ignore_index=True
@@ -191,15 +176,12 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
             print(results_df2)
             results_df2.to_html('snr_results_all.html', justify='center', table_id='TRANVERSE')
 
-
             # import Excel data with macro results
-
             excel_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=1, sheet_name='SNR Head Head_Ni_Sola')
             print(excel_df)
 
             excel_constants_df = excel_df.iloc[1:17, 6:8]
             excel_constants_df = excel_constants_df.dropna(how='all')
-            # print(excel_constants_df)
 
             if caseT:
                 T_excel_df = excel_df.iloc[0:12, 0:4]
@@ -214,7 +196,6 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
                 C_excel_df = C_excel_df.dropna(how='all')
                 print(C_excel_df)
 
-            #sys.exit()
 
 
 

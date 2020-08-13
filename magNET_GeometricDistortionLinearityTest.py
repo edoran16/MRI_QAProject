@@ -1,5 +1,4 @@
 import geoDL_funcs as gf
-import sys
 import pandas as pd
 import cv2
 import numpy as np
@@ -36,15 +35,11 @@ for ii in range(len(geos)):
 
     img, imdata, matrix_size, st, pixels_space = gf.sort_import_data(directpath, geometry)
 
-    # FROM SLICE POS
     # create mask
     bool_mask, bin_mask = gf.create_2D_mask(img, show_graphical)
 
     phim = imdata*bin_mask  # phantom image
     bgim = imdata*~bin_mask  # background image
-
-    # ph_centre, pharea = spf.find_centre_and_area_of_phantom(phmask, plotflag=False)  # TODO: is this needed?
-    # # use ph_centre for defining where to put measurement text on final display
 
     dims = np.shape(phim)
 

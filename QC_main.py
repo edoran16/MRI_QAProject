@@ -32,10 +32,10 @@ def main():
 
 if __name__ == '__main__':
     main()
-    #gen = MagNETdata_dicom()  # MagNET data class
-    #dicomfile, single_slice_im, df, imdims = gen.dicom_read_and_write()
 
-    #xdim, ydim, zdim = imdims
+    gen = MagNETdata_dicom()  # MagNET data class
+    dicomfile, single_slice_im, df, imdims = gen.dicom_read_and_write()
+    xdim, ydim, zdim = imdims
 
 
 

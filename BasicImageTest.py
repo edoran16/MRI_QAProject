@@ -21,7 +21,7 @@ ds, imdata, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py
 
 # display image
 plt.figure()
-plt.imshow(imdata[2, :, :], cmap='bone')
+plt.imshow(imdata, cmap='bone')
 plt.colorbar()
 plt.axis('off')
 plt.savefig(path + '.png')
@@ -78,7 +78,6 @@ plt.show()
 # FOREGROUND DETECTION METHOD 1
 val = filters.threshold_otsu(imdata)  # OTSU threshold to segment phantom
 mask = imdata > val  # phantom mask
-# TODO: update threshold method for alternative foreground detection
 # FOREGROUND DETECTION METHOD 2 https://github.com/ccipd/MRQy/blob/master/QCF.py
 img = imdata
 h = ex.equalize_hist(img[:, :]) * 255  # histogram equalisation increases contrast of image
@@ -121,7 +120,8 @@ plt.title('Weighted Combo Image Threshold')
 plt.axis('off')
 
 # not sure this stage is that helpful... doesn't mask top of phantom right
-conv_hull = convex_hull_image(ots)  # set of pixels included in smallest convex polygon that SURROUND all white pixels in the input image
+conv_hull = convex_hull_image(ots)  # set of pixels included in smallest convex polygon that SURROUND all
+# white pixels in the input image
 ch = np.multiply(conv_hull, 1)  # bool --> binary
 
 plt.subplot(236)
@@ -132,7 +132,7 @@ plt.show()
 
 ch = ots  # ignore convex hull step
 fore_image = ch * img  # phantom
-back_image = (1 - ch) * img  #background
+back_image = (1 - ch) * img  # background
 
 plt.figure()
 plt.subplot(221)
@@ -208,7 +208,7 @@ plt.savefig(path + '_eroded_mask.png')
 plt.show()
 
 # LOW PASS FILTER APPLIED TO REDUCE EFFECTS OF NOISE
-# this might not actually be necessary... since SNR is high
+# not crucial if SNR is high
 # specified as pre-processing step in IPEM Report 112
 
 a = imdata.copy()  # copy of DICOM image
@@ -312,14 +312,7 @@ bROI2 = bground_ROI.copy()
 bROI3 = bground_ROI.copy()
 bROI4 = bground_ROI.copy()
 
-# old way - horizontal rectangular ROIs
-# bROI1[0:min_row, 0:half_col] = 1  # assign each "corner" ROI
-# bROI2[0:min_row, half_col:dims[1]] = 1
-# bROI3[max_row:dims[0], 0:half_col] = 1
-# bROI4[max_row:dims[0], half_col:dims[1]] = 1
-
-# new way: 2 ROIs along each frequency and phase encoding direction
-# bROI1[0:min_row, 0:dims[1]] = 1  # assign each "corner" ROI
+# 2 ROIs along each frequency and phase encoding direction
 rr1, cc1 = ellipse(mid_row1, half_col, mid_row1, max_col - half_col)
 bROI1[rr1, cc1] = 1
 
@@ -339,13 +332,11 @@ ROIs = [bROI1, bROI2, bROI3, bROI4]
 for region in ROIs:
     region_area = np.sum(region)
     roi_proportion = 0.2  # 5%
-    # target_roi_area = roi_proportion * region_area  # based on corner ROI area
     target_roi_area = roi_proportion * new_mask_area  # based on phantom ROI area
     actual_roi_proportion = 1
     roi = region.copy()  # this is eroded variable in while loop
     while actual_roi_proportion > roi_proportion:
         roi = ndimage.binary_erosion(roi).astype(int)
-        # actual_roi_proportion = np.sum(roi) / float(region_area)  # based on corner ROI area
         actual_roi_proportion = np.sum(roi) / float(new_mask_area)  # based on phantom ROI area
     bground_ROI = bground_ROI + roi  # append each updated corner ROI
 

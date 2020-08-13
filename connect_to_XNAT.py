@@ -3,8 +3,8 @@ import os
 import glob
 
 clear_folder = True
-access_central = True
-access_gu = False
+access_central = False
+access_gu = True
 
 if clear_folder:
     files = glob.glob('pyxnat_files/*')
@@ -13,7 +13,7 @@ if clear_folder:
         os.remove(f)
 
 if access_central:
-    central = Interface(server='https://central.xnat.org', user='edoran16', password='Westwood_1306')
+    central = Interface(server='https://central.xnat.org')  # Add the following variables >> user='username', password='password'
 
     # Using pyxnat's object methods to walk down the path.
     # https://wiki.xnat.org/workshop-2016/files/29034956/29034952/1/1465403228621/Pyxnat+101.pdf
@@ -38,7 +38,7 @@ if access_central:
 if access_gu:
     print('Now for GU')
 
-    gu = Interface(server='https://130.209.143.85', user='emma', password='Medphys_0520', verify=False)
+    gu = Interface(server='https://130.209.143.85', verify=False)  # Add the following variables user='username', password='password'
     gu_project = gu.select.project('emmatest')
     gu_subject = gu_project.subject('phantom1')
     gu_experiment = gu_subject.experiment('BasicImage')
