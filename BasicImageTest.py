@@ -340,7 +340,7 @@ for region in ROIs:
         actual_roi_proportion = np.sum(roi) / float(new_mask_area)  # based on phantom ROI area
     bground_ROI = bground_ROI + roi  # append each updated corner ROI
 
-# display background noise ROI and signal ROI for SNR calculation
+# display background noise ROI and signal ROI for the SNR calculation
 plt.figure()
 plt.subplot(121)
 plt.imshow(bground_ROI)
