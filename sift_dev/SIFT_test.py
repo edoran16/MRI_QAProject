@@ -3,17 +3,16 @@
 # include <boost/whatever.hpp>
 
 import os
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 import cv2
 import sys
 import numpy as np
 from skimage import filters
 from skimage.morphology import convex_hull_image, opening
 from skimage import exposure as ex
-import pysift
-import sift
+from sift_dev import pysift, sift
 
-directpath = "MagNET_acceptance_test_data/scans/"
+directpath = "../MagNET_acceptance_test_data/scans/"
 folder = "42-SLICE_POS"
 
 pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')
@@ -140,7 +139,7 @@ for zz in np.linspace(7, 35, 29):  # slices 7-->36 are indexed 6-->35, 30 slices
 
     sift.appendimages(im1, im2)
 
-    sift.plot_matches(im1, im2, kp1, kp2, scores_for_match, phmask1+phmask2, show_below=True)
+    sift.plot_matches(im1, im2, kp1, kp2, scores_for_match, phmask1 + phmask2, show_below=True)
 
 
 

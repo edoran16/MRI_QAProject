@@ -30,7 +30,7 @@ if access_central:
         dicom_resource = scan.resource('DICOM')
 
         the_files = dicom_resource.files()
-        store_file = 'C:/Users/GU Student/PycharmProjects/MRI_QAProject/pyxnat_files'
+        store_file = '/pynat_dev/pyxnat_files'
         for f in the_files:
             print('Getting', f.label(), 'and saving to', store_file)
             f.get_copy(os.path.join(store_file, f.label()))

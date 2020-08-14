@@ -5,7 +5,7 @@ from skimage import exposure as ex
 import cv2
 import numpy as np
 import os
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 from nibabel.viewers import OrthoSlicer3D
 from scipy.signal import find_peaks, medfilt
 

@@ -9,7 +9,7 @@ import os
 import pydicom
 
 # fetch the path to the test data
-directpath = "MagNET_acceptance_test_data/scans/"
+directpath = "../MagNET_acceptance_test_data/scans/"
 
 # list all folders in scans folder
 with os.scandir(directpath) as it:

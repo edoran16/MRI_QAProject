@@ -25,7 +25,7 @@ class phantomimage_dicom:
      SNR"""
 
     def __init__(self):
-        self.directpath = "data_to_get_started/single_slice_dicom/"  # path to DICOM file
+        self.directpath = "../data_to_get_started/single_slice_dicom/"  # path to DICOM file
         self.filename = "image1"
         self.pathtofile = "{0}{1}".format(self.directpath, self.filename)
         print("Init called!")

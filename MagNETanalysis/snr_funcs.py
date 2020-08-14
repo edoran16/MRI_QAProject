@@ -7,7 +7,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 from nibabel.viewers import OrthoSlicer3D
 
 

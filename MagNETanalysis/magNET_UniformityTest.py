@@ -1,10 +1,10 @@
-import uni_funcs as uf
+from MagNETanalysis import uni_funcs as uf
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-directpath = "MagNET_acceptance_test_data/scans/"
-imagepath = "MagNET_acceptance_test_data/UNI_Images/"
+directpath = "../MagNET_acceptance_test_data/scans/"
+imagepath = "../MagNET_acceptance_test_data/UNI_Images/"
 
 test_object = ['FloodField_HEAD', 'FloodField_BODY']
 """ for Flood Field test object - SNR TRA/SAG/COR NICL (OIL data exists as well...)

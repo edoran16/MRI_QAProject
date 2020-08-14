@@ -1,12 +1,12 @@
 """ MagNET SNR measurements. Analysis for head, body coil data """
 
-import snr_funcs as sf
+from MagNETanalysis import snr_funcs as sf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-directpath = "MagNET_acceptance_test_data/scans/"
-imagepath = "MagNET_acceptance_test_data/SNR_Images/"
+directpath = "../MagNET_acceptance_test_data/scans/"
+imagepath = "../MagNET_acceptance_test_data/SNR_Images/"
 
 test_object = ['FloodField_HEAD', 'FloodField_BODY']
 phantom_type = ['_NICL', '_BODY']
@@ -34,13 +34,13 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
         mask, bin_mask = sf.create_2D_mask(img, show_graphical=False, imagepath=fullimagepath)  # boolean and binary masks
         # draw signal ROIs
         pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False,
-                                                                      show_graphical=True, imagepath=fullimagepath)
+                                                                      show_graphical=False, imagepath=fullimagepath)
         # get signal value
         mean_signal, all_signals = sf.get_signal_value(imdata, pc_row, pc_col, quad_centres)
         factor = 0.655  # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
         # draw background ROIs
         noisemarker = imdata * (1 - bin_mask)
-        bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath, marker_im2=noisemarker)
+        bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=False, imagepath=fullimagepath, marker_im2=noisemarker)
         # get background/noise value
         b_noise, all_noise = sf.get_background_noise_value(imdata, bROIs)
         # SNR calculation (background method)
@@ -125,13 +125,13 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
             plt.show()
 
             # draw signal ROIs
-            pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graphical=True, imagepath=fullimagepath)
+            pc_row, pc_col, quad_centres, marker_im = sf.draw_signal_ROIs(bin_mask, img, show_bbox=False, show_quad=False, show_graphical=False, imagepath=fullimagepath)
             # get signal value
             mean_signal, all_signals = sf.get_signal_value(imdata, pc_row, pc_col, quad_centres)
             factor = 0.655  # for single element coil, background noise follows Rayleigh distribution IPEM Report 112
             # draw background ROIs
             noisemarker = imdata*(1 - bin_mask)
-            bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=True, imagepath=fullimagepath, marker_im2=noisemarker)
+            bROIs = sf.draw_background_ROIs(mask, marker_im, pc_col, caseT, caseS, caseC, show_graphical=False, imagepath=fullimagepath, marker_im2=noisemarker)
             # get background/noise value
             b_noise, all_noise = sf.get_background_noise_value(imdata, bROIs)
             # SNR calculation (background method)
@@ -153,9 +153,9 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
             auto_df2 = auto_df2.to_frame()
 
             print(auto_df)
-            auto_df.to_html('snr_data.html')
+            auto_df.to_html(fullimagepath + 'snr_data.html')
             print(auto_df2)
-            auto_df2.to_html('snr_results.html')
+            auto_df2.to_html(fullimagepath + 'snr_results.html')
 
             auto_constants_data = {'Bandwidth': 38.4, 'Nominal Bandwidth': 30, 'BW Correction': np.round(BWcorr, 2),
                                    'Pixel Dimensions (mm)': np.round(pixels_space, 2), 'Slice width (mm)': np.round(st, 2),
@@ -167,14 +167,14 @@ for jj in range(len(test_object)):  # iterate between NICL/flood field and BODY/
             auto_constants_df = auto_constants_df.to_frame()
 
             print(auto_constants_df)
-            auto_constants_df.to_html('snr_normalisation_constants.html')
+            auto_constants_df.to_html(fullimagepath + 'snr_normalisation_constants.html')
 
             # CONCAT EVERYTHING
             results_df = pd.concat([auto_df, auto_df2], join='outer')
             results_df2 = pd.concat([results_df, auto_constants_df])  # , ignore_index=True
             results_df2 = results_df2.fillna('-')
             print(results_df2)
-            results_df2.to_html('snr_results_all.html', justify='center', table_id='TRANVERSE')
+            results_df2.to_html(fullimagepath + 'snr_results_all.html', justify='center', table_id='TRANVERSE')
 
             # import Excel data with macro results
             excel_df = pd.read_excel(r'Sola_INS_07_05_19.xls', header=1, sheet_name='SNR Head Head_Ni_Sola')

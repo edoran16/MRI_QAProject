@@ -1,4 +1,4 @@
-import geoDL_funcs as gf
+from MagNETanalysis import geoDL_funcs as gf
 import pandas as pd
 import cv2
 import numpy as np
@@ -8,8 +8,8 @@ from scipy.spatial import distance as dist
 from skimage import filters
 from skimage.measure import label, regionprops
 
-directpath = "MagNET_acceptance_test_data/scans/"
-imagepath = "MagNET_acceptance_test_data/GEO_Images/"
+directpath = "../MagNET_acceptance_test_data/scans/"
+imagepath = "../MagNET_acceptance_test_data/GEO_Images/"
 
 geos = ['_TRA', '_SAG', '_COR']
 
@@ -36,7 +36,7 @@ for ii in range(len(geos)):
     img, imdata, matrix_size, st, pixels_space = gf.sort_import_data(directpath, geometry)
 
     # create mask
-    bool_mask, bin_mask = gf.create_2D_mask(img, show_graphical)
+    bool_mask, bin_mask = gf.create_2D_mask(img, show_graphical, fullimagepath)
 
     phim = imdata*bin_mask  # phantom image
     bgim = imdata*~bin_mask  # background image

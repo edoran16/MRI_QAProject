@@ -1,4 +1,4 @@
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -207,7 +207,7 @@ def get_ROI_voxels(im, roi, plotflag=True):
     return voxel_vals
 
 
-directpath = "data_to_get_started/single_slice_dicom/"  # path to DICOM file
+directpath = "../data_to_get_started/single_slice_dicom/"  # path to DICOM file
 filename = "image1"
 path = "{0}{1}".format(directpath, filename)
 ds, img, df, dims = dicom_read_and_write(path)  # function from DICOM_test.py

@@ -1,25 +1,21 @@
 """For reference >> https://www.pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-opencv/"""
 
-import resolution_funcs as rf
+from MagNETanalysis import resolution_funcs as rf
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
 import cv2
-import pandas as pd
 import re
-import scipy
-from scipy import fft, ifft, interpolate, ndimage
+from scipy import interpolate
 
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 from skimage import filters
-from scipy.spatial import distance as dist
 from skimage.measure import profile_line, label, regionprops
 from nibabel.viewers import OrthoSlicer3D  # << actually do use this!!
-from skimage.morphology import opening
 
-directpath = "MagNET_acceptance_test_data/scans/"
-imagepath = "MagNET_acceptance_test_data/Resolution_Images/"
+directpath = "../MagNET_acceptance_test_data/scans/"
+imagepath = "../MagNET_acceptance_test_data/Resolution_Images/"
 
 show_graphical = True
 
@@ -262,7 +258,7 @@ plt.show()
 outnorm = outnew/np.max(outnew)
 
 """ Least squares fit of ERF """
-from scipy.optimize import least_squares, curve_fit
+from scipy.optimize import curve_fit
 
 ys = outnorm
 xs = voxnew

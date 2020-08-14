@@ -1,4 +1,4 @@
-from QC_mod import phantomimage_dicom, explore_noise, create_report, MagNETdata_dicom
+from image_analysis_dev.QC_mod import phantomimage_dicom, explore_noise, create_report, MagNETdata_dicom
 
 
 def main():

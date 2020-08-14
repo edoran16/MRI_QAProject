@@ -1,4 +1,4 @@
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 import matplotlib.pyplot as plt
 import numpy as np
 from skimage.measure import profile_line, label, regionprops
@@ -8,7 +8,7 @@ from scipy import ndimage
 from skimage.draw import ellipse
 from skimage import exposure as ex
 
-directpath = "data_to_get_started/"
+directpath = "../data_to_get_started/"
 folder = "single_slice_dicom/"  # path to DICOM file
 filename = "image1"
 path = "{0}{1}{2}".format(directpath, folder, filename)

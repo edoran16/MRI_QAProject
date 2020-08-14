@@ -2,14 +2,13 @@ from pylab import *
 import cv2
 import numpy as np
 import os
-import snr_funcs as sf
-import uni_funcs as uf
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis import uni_funcs as uf, snr_funcs as sf
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 import matplotlib.pyplot as plt
 import pandas as pd
 
-directpath = "MagNET_acceptance_test_data/scans/"
-imagepath = "MagNET_acceptance_test_data/Spine_Images/"
+directpath = "../MagNET_acceptance_test_data/scans/"
+imagepath = "../MagNET_acceptance_test_data/Spine_Images/"
 
 coils = ['_123', '_234', '_345', '_456', '_567', '_678']
 all_signals = []

@@ -1,6 +1,6 @@
 """For reference >> https://www.pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-opencv/"""
 
-import slice_pos_funcs as spf
+from MagNETanalysis import slice_pos_funcs as spf
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -9,14 +9,13 @@ import cv2
 import pandas as pd
 from skimage import filters
 
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 from scipy.spatial import distance as dist
 from skimage.measure import label, regionprops
-from nibabel.viewers import OrthoSlicer3D  # << actually do use this!!
 from skimage.morphology import opening
 
-directpath = "MagNET_acceptance_test_data/scans/"
-imagepath = "MagNET_acceptance_test_data/Slice_Position_Images/"
+directpath = "../MagNET_acceptance_test_data/scans/"
+imagepath = "../MagNET_acceptance_test_data/Slice_Position_Images/"
 folder = "42-SLICE_POS"
 
 pathtodicom = "{0}{1}{2}".format(directpath, folder, '/resources/DICOM/files/')

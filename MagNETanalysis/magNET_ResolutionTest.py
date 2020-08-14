@@ -1,6 +1,6 @@
 """For reference >> https://www.pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-opencv/"""
 
-import resolution_funcs as rf
+from MagNETanalysis import resolution_funcs as rf
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -10,14 +10,14 @@ import re
 import pandas as pd
 
 from scipy.signal import find_peaks, argrelmin
-from DICOM_test import dicom_read_and_write
+from MagNETanalysis.DICOM_test import dicom_read_and_write
 from skimage import filters
 from scipy.spatial import distance as dist
 from skimage.measure import profile_line, label, regionprops
 from nibabel.viewers import OrthoSlicer3D  # << actually do use this!!
 
-directpath = "MagNET_acceptance_test_data/scans/"
-imagepath = "MagNET_acceptance_test_data/Resolution_Images/"
+directpath = "../MagNET_acceptance_test_data/scans/"
+imagepath = "../MagNET_acceptance_test_data/Resolution_Images/"
 
 show_graphical = False   # display/save image processing steps
 show_working_plots = False  # display peak detection to determine pass/fail
