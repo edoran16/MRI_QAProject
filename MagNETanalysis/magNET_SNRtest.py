@@ -1,4 +1,4 @@
-""" MagNET SNR measurements. Analysis for head, body coil data """
+""" MagNET SNR measurements. Analysis for head, body coil data data """
 
 from MagNETanalysis import snr_funcs as sf
 import pandas as pd
