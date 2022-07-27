@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 directpath = "../MagNET_acceptance_test_data/scans/"
 imagepath = "../MagNET_acceptance_test_data/SNR_Images/"
-
+#add a line
 test_object = ['FloodField_HEAD', 'FloodField_BODY']
 phantom_type = ['_NICL', '_BODY']
 geos = ['_TRA_', '_SAG_', '_COR_']
